@@ -1,5 +1,5 @@
 import React from "react";
-import { TrendingUp, TrendingDown, Info } from "lucide-react";
+import { TrendingUp, TrendingDown, Info, Download } from "lucide-react";
 
 const PROGRESS_BAR_COLOR = "bg-blue-500";
 

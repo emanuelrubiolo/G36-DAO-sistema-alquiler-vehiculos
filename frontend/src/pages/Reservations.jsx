@@ -1,26 +1,39 @@
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import {
+  Search,
+  Plus,
+  Edit,
+  Trash2,
+  Sliders,
+  X,
+  PlayCircle,
+  CheckCircle,
+  Eye,
+} from "lucide-react";
 import mockReservations from "../mocks/reservations.json";
-import ReservationList from "../components/reservation/ReservationList";
-import SearchBoxWithButton from "../components/ui/SearchBoxWithButton";
-import StyledPrimaryButton from "../components/ui/StyledPrimaryButton";
-import { Sliders, X, Edit, Trash2, CheckCircle, Eye } from "lucide-react";
-import FinishRentalModal from "../components/rental/FinishRentalModal";
 import mockVehicles from "../mocks/vehicles.json";
 import mockInvoices from "../mocks/invoices.json";
+
 import ReservationFormModal from "../components/reservation/ReservationFormModal";
+import FinishRentalModal from "../components/rental/FinishRentalModal";
+import SearchBoxWithButton from "../components/ui/SearchBoxWithButton";
+import StyledPrimaryButton from "../components/ui/StyledPrimaryButton";
+import GenericTable from "../components/ui/GenericTable";
+import TableActionCell from "../components/ui/TableActionCell";
+
+import { formatCurrency, formatDate } from "../utils/formatters";
 
 const StatusBadge = ({ status }) => {
   const statusMap = {
     RESERVADO: { text: "Reservado", color: "bg-indigo-100 text-indigo-800" },
-    ALQUILADO: { text: "Alquilado", color: "bg-blue-100 text-blue-800" },
+    ALQUILADO: { text: "Alquilado", color: "bg-yellow-100 text-yellow-800" },
     INICIADO: { text: "En Curso", color: "bg-purple-100 text-purple-800" },
     FINALIZADO: { text: "Finalizado", color: "bg-green-100 text-green-800" },
     CANCELADO: { text: "Cancelado", color: "bg-red-100 text-red-800" },
   };
   const { text, color } = statusMap[status] || {
     text: status,
-    color: "bg-yellow-100 text-yellow-800",
+    color: "bg-gray-100 text-gray-800",
   };
   return (
     <span
@@ -29,16 +42,6 @@ const StatusBadge = ({ status }) => {
       {text}
     </span>
   );
-};
-const formatDate = (dateString) => {
-  const options = {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  };
-  return new Date(dateString).toLocaleString("es-AR", options);
 };
 
 export default function Reservations() {
@@ -51,13 +54,11 @@ export default function Reservations() {
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [reservationToEdit, setReservationToEdit] = useState(null);
-
   const [isFinishModalOpen, setIsFinishModalOpen] = useState(false);
   const [rentalToFinish, setRentalToFinish] = useState(null);
 
   const filteredReservations = reservations.filter((res) => {
     const term = searchTerm.toLowerCase();
-
     const vehiclePatente =
       mockVehicles.find((v) => v.id === res.vehicleId)?.patente || "";
 
@@ -77,7 +78,6 @@ export default function Reservations() {
     setReservationToEdit(null);
     setIsEditModalOpen(true);
   };
-
   const handleOpenEditModal = (reservation) => {
     setReservationToEdit(reservation);
     setIsEditModalOpen(true);
@@ -171,11 +171,15 @@ export default function Reservations() {
     setRentalToFinish(null);
   };
 
-  const handleDelete = (reservationId) => {
-    if (window.confirm("¿Estás seguro de que quieres CANCELAR esta reserva?")) {
+  const handleDelete = (reservation) => {
+    if (
+      window.confirm(
+        `¿Estás seguro de que quieres CANCELAR la reserva ID ${reservation.id}?`
+      )
+    ) {
       setReservations((prev) =>
         prev.map((r) =>
-          r.id === reservationId
+          r.id === reservation.id
             ? {
                 ...r,
                 status: "CANCELADO",
@@ -187,6 +191,14 @@ export default function Reservations() {
     }
   };
 
+  const columns = [
+    { header: "# Reserva", field: "id" },
+    { header: "Cliente / Vehículo", field: "clientVehicle" },
+    { header: "Período", field: "period" },
+    { header: "Monto Total", field: "total", align: "right" },
+    { header: "Estado", field: "status" },
+  ];
+
   return (
     <section className="space-y-6">
       {}
@@ -194,10 +206,9 @@ export default function Reservations() {
         <h1 className="text-3xl font-bold text-gray-900">
           Gestión de Reservas
         </h1>
-        {}
         <StyledPrimaryButton onClick={handleNewReservation}>
           <Plus className="w-5 h-5" />
-          <span>Nueva Reserva</span>
+          <span>Registrar Reserva</span>
         </StyledPrimaryButton>
       </header>
 
@@ -245,14 +256,80 @@ export default function Reservations() {
 
         {}
         <div className="flex-grow">
-          {}
-          <ReservationList
-            reservations={filteredReservations}
-            onStart={handleStartRental}
-            onFinish={handleOpenFinishModal}
-            onEdit={handleOpenEditModal}
-            onDelete={handleDelete}
-          />
+          <GenericTable
+            columns={columns}
+            data={filteredReservations}
+            emptyMessage="No se encontraron reservas que coincidan con los filtros."
+          >
+            {(res) => (
+              <tr
+                key={res.id}
+                className="hover:bg-gray-50 transition-colors duration-150"
+              >
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm font-semibold text-gray-900">
+                    {res.id}
+                  </div>
+                </td>
+
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm font-medium text-gray-900">
+                    {res.clientName}
+                  </div>
+                  <div className="text-xs text-gray-500">{res.vehicleName}</div>
+                </td>
+
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-800">
+                    Inicia: {formatDate(res.startDate)}
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    Finaliza: {formatDate(res.endDate)}
+                  </div>
+                </td>
+
+                <td className="px-6 py-4 whitespace-nowrap text-right">
+                  <div className="text-sm font-extrabold text-gray-900">
+                    {formatCurrency(res.total)}
+                  </div>
+                </td>
+
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <StatusBadge status={res.status} />
+                </td>
+
+                {}
+                <TableActionCell
+                  data={res}
+                  onAction={
+                    res.status === "RESERVADO"
+                      ? handleStartRental
+                      : res.status === "ALQUILADO" || res.status === "INICIADO"
+                      ? handleOpenFinishModal
+                      : null
+                  }
+                  additionalActionIcon={
+                    res.status === "RESERVADO"
+                      ? PlayCircle
+                      : res.status === "ALQUILADO" || res.status === "INICIADO"
+                      ? CheckCircle
+                      : null
+                  }
+                  additionalActionTitle={
+                    res.status === "RESERVADO"
+                      ? "Iniciar Alquiler"
+                      : res.status === "ALQUILADO" || res.status === "INICIADO"
+                      ? "Finalizar Alquiler"
+                      : null
+                  }
+                  onEdit={
+                    res.status === "RESERVADO" ? handleOpenEditModal : null
+                  }
+                  onDelete={res.status !== "FINALIZADO" ? handleDelete : null}
+                />
+              </tr>
+            )}
+          </GenericTable>
         </div>
       </div>
 

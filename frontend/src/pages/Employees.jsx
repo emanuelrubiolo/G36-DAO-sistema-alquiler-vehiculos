@@ -1,11 +1,23 @@
 import { useState } from "react";
-import { Search, Plus, Edit, Trash2, LayoutGrid, List } from "lucide-react";
+import {
+  Search,
+  Plus,
+  Edit,
+  Trash2,
+  LayoutGrid,
+  List,
+  X,
+  Sliders,
+} from "lucide-react";
 import mockEmployees from "../mocks/employees.json";
+
 import EmployeeFormModal from "../components/employee/EmployeeFormModal";
 import EmployeeCard from "../components/employee/EmployeeCard";
-import StyledActionButton from "../components/ui/StyledActionButton";
 import SearchBoxWithButton from "../components/ui/SearchBoxWithButton";
 import StyledPrimaryButton from "../components/ui/StyledPrimaryButton";
+import StyledActionButton from "../components/ui/StyledActionButton";
+import GenericTable from "../components/ui/GenericTable";
+import TableActionCell from "../components/ui/TableActionCell";
 
 const getToggleClasses = (currentView, buttonView) => {
   return `p-2 rounded-lg transition-all duration-200 ${
@@ -68,99 +80,65 @@ export default function Employees() {
     handleCloseModal();
   };
 
-  const handleDelete = (employeeId) => {
+  const handleDelete = (employee) => {
     if (
-      window.confirm("¿Estás seguro de que quieres eliminar este empleado?")
+      window.confirm(
+        `¿Estás seguro de que quieres eliminar a ${employee.name}?`
+      )
     ) {
-      setEmployees((prev) => prev.filter((e) => e.id !== employeeId));
+      setEmployees((prev) => prev.filter((e) => e.id !== employee.id));
     }
   };
 
-  const TableView = () => (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-max divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th
-              scope="col"
-              className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
-            >
-              Nombre
-            </th>
-            <th
-              scope="col"
-              className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
-            >
-              DNI
-            </th>
-            <th
-              scope="col"
-              className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
-            >
-              Contacto
-            </th>
-            <th
-              scope="col"
-              className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
-            >
-              Cargo
-            </th>
-            <th scope="col" className="relative px-6 py-3">
-              <span className="sr-only">Acciones</span>
-            </th>
-          </tr>
-        </thead>
+  const columns = [
+    { header: "Nombre", field: "name" },
+    { header: "DNI", field: "dni" },
+    { header: "Contacto", field: "contact" },
+    { header: "Cargo", field: "cargo" },
+  ];
 
-        <tbody className="bg-white divide-y divide-gray-200">
-          {filteredEmployees.map((employee) => (
-            <tr
-              key={employee.id}
-              className="hover:bg-gray-50 transition-colors duration-150"
-            >
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm font-medium text-gray-900">
-                  {employee.name}
-                </div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm font-medium text-gray-900">
-                  {employee.dni}
-                </div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-gray-800">{employee.email}</div>
-                <div className="text-sm text-gray-500">{employee.phone}</div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <span className="px-2.5 py-0.5 inline-flex text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
-                  {employee.cargo}
-                </span>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <div className="flex justify-end items-center gap-1">
-                  <StyledActionButton
-                    onClick={() => handleOpenEditModal(employee)}
-                    title="Modificar"
-                    colorClass="text-blue-600"
-                    size="size-8"
-                  >
-                    <Edit className="w-4 h-4" />
-                  </StyledActionButton>
-                  <StyledActionButton
-                    onClick={() => handleDelete(employee.id)}
-                    title="Eliminar"
-                    colorClass="text-red-600"
-                    size="size-8"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </StyledActionButton>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+  const TableView = () => (
+    <GenericTable
+      columns={columns}
+      data={filteredEmployees}
+      emptyMessage="No se encontraron empleados que coincidan con la búsqueda."
+    >
+      {(employee) => (
+        <tr
+          key={employee.id}
+          className="hover:bg-gray-50 transition-colors duration-150"
+        >
+          <td className="px-6 py-4 whitespace-nowrap">
+            <div className="text-sm font-medium text-gray-900">
+              {employee.name}
+            </div>
+          </td>
+
+          <td className="px-6 py-4 whitespace-nowrap">
+            <div className="text-sm font-medium text-gray-900">
+              {employee.dni}
+            </div>
+          </td>
+
+          <td className="px-6 py-4 whitespace-nowrap">
+            <div className="text-sm text-gray-800">{employee.email}</div>
+            <div className="text-sm text-gray-500">{employee.phone}</div>
+          </td>
+
+          <td className="px-6 py-4 whitespace-nowrap">
+            <span className="px-2.5 py-0.5 inline-flex text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+              {employee.cargo}
+            </span>
+          </td>
+
+          <TableActionCell
+            data={employee}
+            onEdit={handleOpenEditModal}
+            onDelete={handleDelete}
+          />
+        </tr>
+      )}
+    </GenericTable>
   );
 
   const GridView = () => (
@@ -178,7 +156,6 @@ export default function Employees() {
 
   return (
     <section className="space-y-6">
-      {}
       <header className="flex justify-between items-center pb-2">
         <h1 className="text-3xl font-bold text-gray-900">
           Gestión de Empleados
@@ -189,7 +166,6 @@ export default function Employees() {
         </StyledPrimaryButton>
       </header>
 
-      {}
       <div className="flex gap-6">
         <SearchBoxWithButton
           searchTerm={searchTerm}
@@ -230,15 +206,11 @@ export default function Employees() {
         )}
 
         {}
-        <div className="flex-grow bg-white rounded-xl border border-gray-100 shadow-xl overflow-hidden">
-          {view === "table" && <TableView />}
-          {view === "grid" && <GridView />}
-
-          {filteredEmployees.length === 0 && (
-            <div className="p-8 text-center text-gray-500">
-              No se encontraron empleados que coincidan con la búsqueda.
-            </div>
-          )}
+        <div className="flex-grow">
+          <div className="bg-white rounded-xl border border-gray-100 shadow-xl overflow-hidden">
+            {view === "table" && <TableView />}
+            {view === "grid" && <GridView />}
+          </div>
         </div>
       </div>
 

@@ -1,11 +1,23 @@
 import { useState } from "react";
-import { Plus, Search, Sliders, X, Key } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Sliders,
+  X,
+  Key,
+  User,
+  Edit,
+  Trash2,
+} from "lucide-react";
 import mockUsers from "../mocks/users.json";
 import mockEmployees from "../mocks/employees.json";
+
 import UserList from "../components/user/UserList";
 import UserFormModal from "../components/user/UserFormModal";
 import SearchBoxWithButton from "../components/ui/SearchBoxWithButton";
 import StyledPrimaryButton from "../components/ui/StyledPrimaryButton";
+import GenericTable from "../components/ui/GenericTable";
+import TableActionCell from "../components/ui/TableActionCell";
 
 export default function Users() {
   const [users, setUsers] = useState(mockUsers);
@@ -56,15 +68,20 @@ export default function Users() {
     handleCloseModal();
   };
 
-  const handleDelete = (userId) => {
+  const handleDelete = (user) => {
     if (
       window.confirm(
-        "¿Estás seguro de que quieres eliminar este usuario? Perderá el acceso al sistema."
+        `¿Estás seguro de que quieres eliminar el usuario ${user.username}?`
       )
     ) {
-      setUsers((prev) => prev.filter((u) => u.userId !== userId));
+      setUsers((prev) => prev.filter((u) => u.userId !== user.userId));
     }
   };
+
+  const columns = [
+    { header: "Nombre de Usuario", field: "username" },
+    { header: "Empleado Vinculado", field: "employeeName" },
+  ];
 
   return (
     <section className="space-y-6">
@@ -123,11 +140,51 @@ export default function Users() {
 
         {}
         <div className="flex-grow">
-          <UserList
-            users={filteredUsers}
-            onEdit={handleOpenEditModal}
-            onDelete={handleDelete}
-          />
+          <GenericTable
+            columns={columns}
+            data={filteredUsers}
+            emptyMessage="No se encontraron usuarios que coincidan con la búsqueda."
+          >
+            {}
+            {(user) => (
+              <tr
+                key={user.userId}
+                className="hover:bg-gray-50 transition-colors duration-150"
+              >
+                {}
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center gap-2">
+                    <Key className="w-5 h-5 text-gray-500" />
+                    <span className="text-sm font-bold text-gray-900">
+                      {user.username}
+                    </span>
+                  </div>
+                </td>
+
+                {}
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center gap-2">
+                    <User className="w-5 h-5 text-gray-500" />
+                    <span className="text-sm text-gray-800">
+                      {user.employeeName}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      (ID: {user.employeeId})
+                    </span>
+                  </div>
+                </td>
+
+                {}
+                <TableActionCell
+                  data={user}
+                  onEdit={handleOpenEditModal}
+                  onDelete={handleDelete}
+                  additionalActionTitle="Modificar Contraseña"
+                  hideDelete={false}
+                />
+              </tr>
+            )}
+          </GenericTable>
         </div>
       </div>
 

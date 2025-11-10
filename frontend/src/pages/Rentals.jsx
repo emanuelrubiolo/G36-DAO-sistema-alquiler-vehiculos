@@ -1,32 +1,58 @@
 import { useState } from "react";
-import { Plus, Sliders, X } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Sliders,
+  X,
+  PlayCircle,
+  CheckCircle,
+} from "lucide-react";
 import mockRentals from "../mocks/reservations.json";
-import RentalList from "../components/rental/RentalList";
-import SearchBoxWithButton from "../components/ui/SearchBoxWithButton";
-import StyledPrimaryButton from "../components/ui/StyledPrimaryButton";
-import FinishRentalModal from "../components/rental/FinishRentalModal";
-import ReservationFormModal from "../components/reservation/ReservationFormModal";
 import mockVehicles from "../mocks/vehicles.json";
 import mockInvoices from "../mocks/invoices.json";
+import mockClients from "../mocks/clients.json";
+
+import ReservationFormModal from "../components/reservation/ReservationFormModal";
+import FinishRentalModal from "../components/rental/FinishRentalModal";
+import SearchBoxWithButton from "../components/ui/SearchBoxWithButton";
+import StyledPrimaryButton from "../components/ui/StyledPrimaryButton";
+import GenericTable from "../components/ui/GenericTable";
+import TableActionCell from "../components/ui/TableActionCell";
+
+import { formatCurrency, formatDate } from "../utils/formatters";
+
+const StatusBadge = ({ status }) => {
+  const statusMap = {
+    RESERVADO: { text: "Reservado", color: "bg-indigo-100 text-indigo-800" },
+    ALQUILADO: { text: "Alquilado", color: "bg-yellow-100 text-yellow-800" },
+    INICIADO: { text: "En Curso", color: "bg-purple-100 text-purple-800" },
+    FINALIZADO: { text: "Finalizado", color: "bg-green-100 text-green-800" },
+    CANCELADO: { text: "Cancelado", color: "bg-red-100 text-red-800" },
+  };
+  const { text, color } = statusMap[status] || {
+    text: status,
+    color: "bg-gray-100 text-gray-800",
+  };
+  return (
+    <span
+      className={`px-2.5 py-0.5 inline-flex text-xs font-semibold rounded-full ${color}`}
+    >
+      {text}
+    </span>
+  );
+};
 
 export default function Rentals() {
-  const initialRentals = mockRentals.filter(
-    (r) =>
-      r.status === "ALQUILADO" ||
-      r.status === "INICIADO" ||
-      r.status === "FINALIZADO"
-  );
-
   const [searchTerm, setSearchTerm] = useState("");
-  const [rentals, setRentals] = useState(initialRentals);
+  const [rentals, setRentals] = useState(
+    mockRentals.filter((r) => r.status !== "RESERVADO")
+  );
   const [vehicles, setVehicles] = useState(mockVehicles);
   const [invoices, setInvoices] = useState(mockInvoices);
-  const [view] = useState("table");
   const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false);
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [rentalToEdit, setRentalToEdit] = useState(null);
-
   const [isFinishModalOpen, setIsFinishModalOpen] = useState(false);
   const [rentalToFinish, setRentalToFinish] = useState(null);
 
@@ -51,7 +77,6 @@ export default function Rentals() {
     setRentalToEdit(null);
     setIsEditModalOpen(true);
   };
-
   const handleOpenEditModal = (rental) => {
     setRentalToEdit(rental);
     setIsEditModalOpen(true);
@@ -62,6 +87,9 @@ export default function Rentals() {
   };
   const handleEditSubmit = (formData) => {
     if (!rentalToEdit) {
+      const selectedVehicle = mockVehicles.find(
+        (v) => v.id === formData.vehicleId
+      );
       const newRental = {
         id: `a${new Date().getTime()}`,
         status: "ALQUILADO",
@@ -71,7 +99,7 @@ export default function Rentals() {
       setRentals((prev) => [newRental, ...prev]);
       setVehicles((prev) =>
         prev.map((v) =>
-          v.id === formData.vehicleId ? { ...v, estado: "ALQUILADO" } : v
+          v.id === formData.vehicleId ? { ...v, estado: "NO_DISPONIBLE" } : v
         )
       );
     } else {
@@ -127,15 +155,15 @@ export default function Rentals() {
     setRentalToFinish(null);
   };
 
-  const handleDelete = (rentalId) => {
+  const handleDelete = (rental) => {
     if (
       window.confirm(
-        "¿Estás seguro de que quieres CANCELAR este alquiler? Esto no generará factura."
+        `¿Estás seguro de que quieres CANCELAR el alquiler ID ${rental.id}?`
       )
     ) {
       setRentals((prev) =>
         prev.map((r) =>
-          r.id === rentalId
+          r.id === rental.id
             ? {
                 ...r,
                 status: "CANCELADO",
@@ -144,9 +172,8 @@ export default function Rentals() {
             : r
         )
       );
-
-      const rental = rentals.find((r) => r.id === rentalId);
-      if (rental) {
+      const vehicle = vehicles.find((v) => v.id === rental.vehicleId);
+      if (vehicle) {
         setVehicles((prev) =>
           prev.map((v) =>
             v.id === rental.vehicleId ? { ...v, estado: "DISPONIBLE" } : v
@@ -156,6 +183,14 @@ export default function Rentals() {
     }
   };
 
+  const columns = [
+    { header: "# Alquiler", field: "id" },
+    { header: "Cliente / Vehículo", field: "clientVehicle" },
+    { header: "Período", field: "period" },
+    { header: "Monto Total", field: "total", align: "right" },
+    { header: "Estado", field: "status" },
+  ];
+
   return (
     <section className="space-y-6">
       {}
@@ -163,7 +198,6 @@ export default function Rentals() {
         <h1 className="text-3xl font-bold text-gray-900">
           Gestión de Alquileres Activos
         </h1>
-        {}
         <StyledPrimaryButton onClick={handleNewRental}>
           <Plus className="w-5 h-5" />
           <span>Registrar Alquiler</span>
@@ -177,7 +211,6 @@ export default function Rentals() {
           onSearchTermChange={setSearchTerm}
           onSearchClick={handleSearchExecution}
           onOpenAdvancedFilters={() => setIsAdvancedFilterOpen((prev) => !prev)}
-          view={view}
           showViewToggle={false}
           placeholder="Buscar por Cliente, Vehículo o ID de Alquiler..."
         />
@@ -212,12 +245,69 @@ export default function Rentals() {
 
         {}
         <div className="flex-grow">
-          <RentalList
-            rentals={filteredRentals}
-            onFinish={handleOpenFinishModal}
-            onEdit={handleOpenEditModal}
-            onDelete={handleDelete}
-          />
+          <GenericTable
+            columns={columns}
+            data={filteredRentals}
+            emptyMessage="No se encontraron alquileres que coincidan con los filtros."
+          >
+            {(rental) => (
+              <tr
+                key={rental.id}
+                className="hover:bg-gray-50 transition-colors duration-150"
+              >
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm font-semibold text-gray-900">
+                    {rental.id}
+                  </div>
+                </td>
+
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm font-medium text-gray-900">
+                    {rental.clientName}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {rental.vehicleName}
+                  </div>
+                </td>
+
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-800">
+                    Inicia: {formatDate(rental.startDate)}
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    Finaliza: {formatDate(rental.endDate)}
+                  </div>
+                </td>
+
+                <td className="px-6 py-4 whitespace-nowrap text-right">
+                  <div className="text-sm font-extrabold text-gray-900">
+                    {formatCurrency(rental.total)}
+                  </div>
+                </td>
+
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <StatusBadge status={rental.status} />
+                </td>
+
+                {}
+                <TableActionCell
+                  data={rental}
+                  onAction={
+                    rental.status === "ALQUILADO" ||
+                    rental.status === "INICIADO"
+                      ? handleOpenFinishModal
+                      : null
+                  }
+                  additionalActionIcon={CheckCircle}
+                  additionalActionTitle="Finalizar Alquiler"
+                  onEdit={handleOpenEditModal}
+                  onDelete={
+                    rental.status !== "FINALIZADO" ? handleDelete : null
+                  }
+                />
+              </tr>
+            )}
+          </GenericTable>
         </div>
       </div>
 
@@ -227,7 +317,6 @@ export default function Rentals() {
         onClose={handleCloseEditModal}
         onSubmit={handleEditSubmit}
         reservationToEdit={rentalToEdit}
-        isRentalCreation={!rentalToEdit}
       />
       <FinishRentalModal
         isOpen={isFinishModalOpen}

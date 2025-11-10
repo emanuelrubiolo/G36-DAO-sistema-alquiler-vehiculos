@@ -1,16 +1,17 @@
 import { useState } from "react";
-import { Search, Sliders, X, CheckCircle, Eye } from "lucide-react";
+import { Search, Sliders, X, CheckCircle, Eye, Download } from "lucide-react";
 import mockInvoices from "../mocks/invoices.json";
 import mockReservations from "../mocks/reservations.json";
+
 import SearchBoxWithButton from "../components/ui/SearchBoxWithButton";
 import StyledPrimaryButton from "../components/ui/StyledPrimaryButton";
-import StyledActionButton from "../components/ui/StyledActionButton";
+
+import GenericTable from "../components/ui/GenericTable";
+
+import TableActionCell from "../components/ui/TableActionCell";
 import InvoiceDetailModal from "../components/invoice/InvoiceDetailModal";
 
-const formatDate = (dateString) => {
-  const options = { year: "numeric", month: "2-digit", day: "2-digit" };
-  return new Date(dateString).toLocaleDateString("es-AR", options);
-};
+import { formatCurrency, formatDate } from "../utils/formatters";
 
 const InvoiceStatusBadge = ({ status }) => {
   const isPaid = status === "COBRADA";
@@ -52,11 +53,15 @@ export default function Invoices() {
     console.log("Ejecutando búsqueda de facturas con:", searchTerm);
   };
 
-  const handleMarkAsPaid = (invoiceId) => {
-    if (window.confirm("¿Confirmar que la factura ha sido COBRADA?")) {
+  const handleMarkAsPaid = (invoice) => {
+    if (
+      window.confirm(
+        `¿Confirmar que la factura ID ${invoice.id} ha sido COBRADA?`
+      )
+    ) {
       setInvoices((prev) =>
         prev.map((inv) =>
-          inv.id === invoiceId ? { ...inv, status: "COBRADA" } : inv
+          inv.id === invoice.id ? { ...inv, status: "COBRADA" } : inv
         )
       );
     }
@@ -73,17 +78,26 @@ export default function Invoices() {
     setSelectedDetail({ invoice: null, rental: null });
   };
 
+  const columns = [
+    { header: "Factura / Alquiler", field: "invoiceId" },
+    { header: "Cliente", field: "clientName" },
+    { header: "Fecha Emisión", field: "issueDate" },
+    { header: "Total", field: "total", align: "right" },
+    { header: "Estado", field: "status" },
+  ];
+
   return (
     <section className="space-y-6">
-      {}
       <header className="flex justify-between items-center pb-2">
         <h1 className="text-3xl font-bold text-gray-900">
           Gestión de Facturación
         </h1>
-        {}
+        <StyledPrimaryButton className="bg-green-600 hover:bg-green-700">
+          <Download className="w-5 h-5" />
+          <span>Exportar Datos</span>
+        </StyledPrimaryButton>
       </header>
 
-      {}
       <div className="flex gap-6">
         <SearchBoxWithButton
           searchTerm={searchTerm}
@@ -130,126 +144,71 @@ export default function Invoices() {
         )}
 
         {}
-        <div className="flex-grow bg-white rounded-xl border border-gray-100 shadow-xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-max divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
-                  >
-                    Factura / Alquiler
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
-                  >
-                    Cliente
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
-                  >
-                    Fecha Emisión
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
-                  >
-                    Total
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
-                  >
-                    Estado
-                  </th>
-                  <th scope="col" className="relative px-6 py-3 text-right">
-                    <span className="sr-only">Acciones</span>
-                  </th>
-                </tr>
-              </thead>
+        <div className="flex-grow">
+          <GenericTable
+            columns={columns}
+            data={filteredInvoices}
+            emptyMessage="No se encontraron facturas que coincidan con los filtros."
+          >
+            {}
+            {(invoice) => (
+              <tr
+                key={invoice.id}
+                className="hover:bg-gray-50 transition-colors duration-150"
+              >
+                {}
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm font-medium text-gray-900">
+                    ID Factura: {invoice.id}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    ID Alquiler: {invoice.rentalId}
+                  </div>
+                </td>
 
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredInvoices.map((invoice) => (
-                  <tr
-                    key={invoice.id}
-                    className="hover:bg-gray-50 transition-colors duration-150"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        ID Factura: {invoice.id}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        ID Alquiler: {invoice.rentalId}
-                      </div>
-                    </td>
+                {}
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm font-medium text-gray-900">
+                    {invoice.clientName}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {invoice.paymentMethod}
+                  </div>
+                </td>
 
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {invoice.clientName}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {invoice.paymentMethod}
-                      </div>
-                    </td>
+                {}
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-800">
+                    {formatDate(invoice.issueDate)}
+                  </div>
+                </td>
 
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-800">
-                        {formatDate(invoice.issueDate)}
-                      </div>
-                    </td>
+                {}
+                <td className="px-6 py-4 whitespace-nowrap text-right">
+                  <div className="text-sm font-extrabold text-gray-900">
+                    {formatCurrency(invoice.total)}
+                  </div>
+                </td>
 
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-extrabold text-gray-900">
-                        $
-                        {invoice.total.toLocaleString("es-AR", {
-                          minimumFractionDigits: 2,
-                        })}
-                      </div>
-                    </td>
+                {}
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <InvoiceStatusBadge status={invoice.status} />
+                </td>
 
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <InvoiceStatusBadge status={invoice.status} />
-                    </td>
-
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end items-center gap-1">
-                        {}
-                        <StyledActionButton
-                          onClick={() => handleOpenDetailModal(invoice)}
-                          title="Ver Detalle"
-                          colorClass="text-blue-600"
-                          isIconOnly={true}
-                        >
-                          <Eye className="w-5 h-5" />
-                        </StyledActionButton>
-
-                        {}
-                        {invoice.status === "NO COBRADA" && (
-                          <StyledActionButton
-                            onClick={() => handleMarkAsPaid(invoice.id)}
-                            title="Marcar como Cobrada"
-                            colorClass="text-green-600"
-                            isIconOnly={true}
-                          >
-                            <CheckCircle className="w-5 h-5" />
-                          </StyledActionButton>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {filteredInvoices.length === 0 && (
-            <div className="p-8 text-center text-gray-500">
-              No se encontraron facturas que coincidan con los filtros.
-            </div>
-          )}
+                {}
+                <TableActionCell
+                  data={invoice}
+                  onView={handleOpenDetailModal}
+                  onAction={
+                    invoice.status === "NO COBRADA" ? handleMarkAsPaid : null
+                  }
+                  additionalActionIcon={CheckCircle}
+                  additionalActionTitle="Marcar como Cobrada"
+                  hideDelete={true}
+                />
+              </tr>
+            )}
+          </GenericTable>
         </div>
       </div>
 

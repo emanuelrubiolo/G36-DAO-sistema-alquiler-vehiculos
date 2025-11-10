@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Search, Sliders, X, Edit, Trash2 } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+
 import mockMaintenance from "../mocks/maintenance.json";
 import MaintenanceFormModal from "../components/maintenance/MaintenanceFormModal";
 import mockVehicles from "../mocks/vehicles.json";
@@ -28,6 +30,8 @@ const TypeBadge = ({ type }) => {
 };
 
 export default function Maintenance() {
+  const location = useLocation();
+
   const [maintenanceJobs, setMaintenanceJobs] = useState(mockMaintenance);
   const [searchTerm, setSearchTerm] = useState("");
   const [vehiclesList] = useState(mockVehicles);
@@ -36,7 +40,27 @@ export default function Maintenance() {
   const [jobToEdit, setJobToEdit] = useState(null);
   const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false);
 
-  const filteredJobs = maintenanceJobs.filter(
+  const [dashboardFilterMessage, setDashboardFilterMessage] = useState(null);
+
+  useEffect(() => {
+    if (location.state && location.state.filter === "PENDIENTE") {
+      const pendingJobs = mockMaintenance.filter(
+        (job) => job.type === "Preventivo" || job.type === "Correctivo"
+      );
+
+      setMaintenanceJobs(pendingJobs);
+      setDashboardFilterMessage(location.state.message);
+
+      window.history.replaceState({}, document.title, location.pathname);
+    } else {
+      setMaintenanceJobs(mockMaintenance);
+      setDashboardFilterMessage(null);
+    }
+  }, [location.state]);
+
+  const jobsSource = dashboardFilterMessage ? maintenanceJobs : mockMaintenance;
+
+  const filteredJobs = jobsSource.filter(
     (job) =>
       job.vehicleName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.description.toLowerCase().includes(searchTerm.toLowerCase())
@@ -45,17 +69,14 @@ export default function Maintenance() {
   const handleSearchExecution = () => {
     console.log("Ejecutando búsqueda de mantenimiento con:", searchTerm);
   };
-
   const handleOpenCreateModal = () => {
     setJobToEdit(null);
     setIsModalOpen(true);
   };
-
   const handleOpenEditModal = (job) => {
     setJobToEdit(job);
     setIsModalOpen(true);
   };
-
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setJobToEdit(null);
@@ -69,10 +90,7 @@ export default function Maintenance() {
         )
       );
     } else {
-      const newJob = {
-        id: `m${new Date().getTime()}`,
-        ...formData,
-      };
+      const newJob = { id: `m${new Date().getTime()}`, ...formData };
       setMaintenanceJobs((prev) => [newJob, ...prev]);
     }
     handleCloseModal();
@@ -86,6 +104,12 @@ export default function Maintenance() {
     ) {
       setMaintenanceJobs((prev) => prev.filter((j) => j.id !== job.id));
     }
+  };
+
+  const handleClearDashboardFilter = () => {
+    setMaintenanceJobs(mockMaintenance);
+    setDashboardFilterMessage(null);
+    setSearchTerm("");
   };
 
   const columns = [
@@ -107,6 +131,22 @@ export default function Maintenance() {
           <span>Registrar Mantenimiento</span>
         </StyledPrimaryButton>
       </header>
+
+      {}
+      {dashboardFilterMessage && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-md shadow-md flex justify-between items-center">
+          <p className="font-semibold text-yellow-800">
+            {dashboardFilterMessage}
+          </p>
+          <button
+            onClick={handleClearDashboardFilter}
+            className="text-yellow-800 hover:text-yellow-900 font-bold flex items-center gap-1 transition-colors"
+          >
+            <X className="w-4 h-4" />
+            Mostrar Todos
+          </button>
+        </div>
+      )}
 
       {}
       <div className="flex gap-6">
@@ -155,7 +195,6 @@ export default function Maintenance() {
             data={filteredJobs}
             emptyMessage="No se encontraron registros de mantenimiento."
           >
-            {}
             {(job) => (
               <tr
                 key={job.id}
@@ -189,7 +228,6 @@ export default function Maintenance() {
                   </span>
                 </td>
 
-                {}
                 <TableActionCell
                   data={job}
                   onEdit={handleOpenEditModal}
@@ -203,6 +241,7 @@ export default function Maintenance() {
         </div>
       </div>
 
+      {}
       <MaintenanceFormModal
         isOpen={isModalOpen}
         onClose={handleCloseModal}

@@ -1,11 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { NavLink } from "react-router-dom";
-import { LogOut, User, Key, Briefcase, Mail, Phone, Hash } from "lucide-react";
+import { LogOut, Key, Briefcase, Mail, Phone, Hash, Car } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 
 import {
   LayoutDashboard,
-  Car,
   CalendarCheck,
   Users,
   ClipboardList,
@@ -24,7 +23,6 @@ const menuItems = [
   { name: "Mantenimiento", icon: Wrench, path: "/mantenimiento" },
   { name: "Incidentes", icon: AlertTriangle, path: "/incidentes" },
   { name: "Facturación", icon: DollarSign, path: "/facturacion" },
-  { name: "Reportes", icon: BarChart3, path: "/reportes" },
   { name: "Empleados", icon: Briefcase, path: "/empleados" },
   { name: "Usuarios", icon: Key, path: "/usuarios" },
 ];
@@ -43,7 +41,6 @@ const DetailRow = ({ icon: Icon, label, value }) => (
 
 export default function Sidebar() {
   const { currentUser, logout } = useAuth();
-
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const employeeName = currentUser?.name || "Usuario";
@@ -56,9 +53,13 @@ export default function Sidebar() {
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-gray-200 flex flex-col">
       {}
-      <div className="p-6 border-b border-gray-100 flex items-center gap-2">
-        <span className="text-2xl">🚗</span>
-        <h1 className="font-semibold text-gray-800 text-lg">RentApp</h1>
+      <div className="p-6 border-b border-gray-200 flex items-center gap-3">
+        <div className="size-8 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-md">
+          <Car className="w-4 h-4" />
+        </div>
+        <h1 className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-700 text-transparent bg-clip-text">
+          RentApp
+        </h1>
       </div>
 
       {}
@@ -68,15 +69,15 @@ export default function Sidebar() {
             key={name}
             to={path}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-2 rounded-lg transition ${
+              `flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 ${
                 isActive
-                  ? "bg-blue-100 text-blue-600 font-semibold"
+                  ? "bg-blue-600 text-white font-semibold shadow-md hover:bg-blue-700"
                   : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
               }`
             }
           >
             <Icon className="w-5 h-5" />
-            {name}
+            <span className="text-sm">{name}</span>
           </NavLink>
         ))}
       </nav>
@@ -110,7 +111,6 @@ export default function Sidebar() {
               </h4>
             </div>
 
-            {}
             <div className="py-2">
               <DetailRow icon={Briefcase} label="Cargo" value={employeeCargo} />
               <DetailRow icon={Hash} label="DNI" value={employeeDNI} />

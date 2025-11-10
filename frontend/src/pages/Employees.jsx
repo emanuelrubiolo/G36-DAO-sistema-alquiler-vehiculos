@@ -1,7 +1,19 @@
 import { useState } from "react";
-import { Search, Plus, Edit, Trash2 } from "lucide-react";
+import { Search, Plus, Edit, Trash2, LayoutGrid, List } from "lucide-react";
 import mockEmployees from "../mocks/employees.json";
 import EmployeeFormModal from "../components/employee/EmployeeFormModal";
+import EmployeeCard from "../components/employee/EmployeeCard";
+import StyledActionButton from "../components/ui/StyledActionButton";
+import SearchBoxWithButton from "../components/ui/SearchBoxWithButton";
+import StyledPrimaryButton from "../components/ui/StyledPrimaryButton";
+
+const getToggleClasses = (currentView, buttonView) => {
+  return `p-2 rounded-lg transition-all duration-200 ${
+    currentView === buttonView
+      ? "bg-blue-100 text-blue-600 shadow-sm"
+      : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+  }`;
+};
 
 export default function Employees() {
   const [employees, setEmployees] = useState(mockEmployees);
@@ -9,6 +21,8 @@ export default function Employees() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [employeeToEdit, setEmployeeToEdit] = useState(null);
+  const [view, setView] = useState("grid");
+  const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false);
 
   const filteredEmployees = employees.filter(
     (employee) =>
@@ -17,6 +31,10 @@ export default function Employees() {
       employee.cargo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       employee.dni.includes(searchTerm)
   );
+
+  const handleSearchExecution = () => {
+    console.log("Ejecutando búsqueda de empleados con:", searchTerm);
+  };
 
   const handleOpenCreateModal = () => {
     setEmployeeToEdit(null);
@@ -58,129 +76,170 @@ export default function Employees() {
     }
   };
 
+  const TableView = () => (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-max divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th
+              scope="col"
+              className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
+            >
+              Nombre
+            </th>
+            <th
+              scope="col"
+              className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
+            >
+              DNI
+            </th>
+            <th
+              scope="col"
+              className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
+            >
+              Contacto
+            </th>
+            <th
+              scope="col"
+              className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
+            >
+              Cargo
+            </th>
+            <th scope="col" className="relative px-6 py-3">
+              <span className="sr-only">Acciones</span>
+            </th>
+          </tr>
+        </thead>
+
+        <tbody className="bg-white divide-y divide-gray-200">
+          {filteredEmployees.map((employee) => (
+            <tr
+              key={employee.id}
+              className="hover:bg-gray-50 transition-colors duration-150"
+            >
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="text-sm font-medium text-gray-900">
+                  {employee.name}
+                </div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="text-sm font-medium text-gray-900">
+                  {employee.dni}
+                </div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="text-sm text-gray-800">{employee.email}</div>
+                <div className="text-sm text-gray-500">{employee.phone}</div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <span className="px-2.5 py-0.5 inline-flex text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                  {employee.cargo}
+                </span>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <div className="flex justify-end items-center gap-1">
+                  <StyledActionButton
+                    onClick={() => handleOpenEditModal(employee)}
+                    title="Modificar"
+                    colorClass="text-blue-600"
+                    size="size-8"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </StyledActionButton>
+                  <StyledActionButton
+                    onClick={() => handleDelete(employee.id)}
+                    title="Eliminar"
+                    colorClass="text-red-600"
+                    size="size-8"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </StyledActionButton>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  const GridView = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6 transition-opacity duration-500">
+      {filteredEmployees.map((employee) => (
+        <EmployeeCard
+          key={employee.id}
+          employee={employee}
+          onEdit={handleOpenEditModal}
+          onDelete={handleDelete}
+        />
+      ))}
+    </div>
+  );
+
   return (
     <section className="space-y-6">
-      <header>
+      {}
+      <header className="flex justify-between items-center pb-2">
         <h1 className="text-3xl font-bold text-gray-900">
           Gestión de Empleados
         </h1>
+        <StyledPrimaryButton onClick={handleOpenCreateModal}>
+          <Plus className="w-5 h-5" />
+          <span>Agregar Empleado</span>
+        </StyledPrimaryButton>
       </header>
 
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-        <div className="p-4 sm:p-6 flex flex-col sm:flex-row sm:justify-between gap-4 border-b border-gray-200">
-          <div className="relative w-full sm:w-72">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar por nombre, DNI o cargo..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          </div>
+      {}
+      <div className="flex gap-6">
+        <SearchBoxWithButton
+          searchTerm={searchTerm}
+          onSearchTermChange={setSearchTerm}
+          onSearchClick={handleSearchExecution}
+          onOpenAdvancedFilters={() => setIsAdvancedFilterOpen((prev) => !prev)}
+          view={view}
+          onViewChange={setView}
+          showViewToggle={true}
+          placeholder="Buscar por Nombre, DNI, o Cargo..."
+        />
+      </div>
 
-          <button
-            onClick={handleOpenCreateModal}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-sm hover:bg-blue-700 transition-colors duration-200"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Agregar Empleado</span>
-          </button>
-        </div>
+      {}
+      <div className="mt-6 flex gap-6">
+        {}
+        {isAdvancedFilterOpen && (
+          <div className="w-64 bg-white rounded-xl shadow-lg border border-gray-100 p-5 shrink-0 transition-all duration-300">
+            <div className="flex justify-between items-center mb-4 pb-2 border-b">
+              <h3 className="font-bold text-lg flex items-center gap-2">
+                Filtros de Empleado
+              </h3>
+              <button
+                onClick={() => setIsAdvancedFilterOpen(false)}
+                className="btn size-8 rounded-full p-0 text-gray-500 hover:bg-gray-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-max divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
-                >
-                  Nombre
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
-                >
-                  DNI
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
-                >
-                  Contacto
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
-                >
-                  Cargo
-                </th>
-                <th scope="col" className="relative px-6 py-3">
-                  <span className="sr-only">Acciones</span>
-                </th>
-              </tr>
-            </thead>
-
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredEmployees.map((employee) => (
-                <tr key={employee.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {employee.name}
-                    </div>
-                  </td>
-
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {employee.dni}
-                    </div>
-                  </td>
-
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-800">
-                      {employee.email}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {employee.phone}
-                    </div>
-                  </td>
-
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2.5 py-0.5 inline-flex text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
-                      {employee.cargo}
-                    </span>
-                  </td>
-
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex justify-end items-center gap-3">
-                      <button
-                        onClick={() => handleOpenEditModal(employee)}
-                        className="text-blue-600 hover:text-blue-800"
-                        title="Modificar"
-                      >
-                        <Edit className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(employee.id)}
-                        className="text-red-600 hover:text-red-800"
-                        title="Eliminar"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {filteredEmployees.length === 0 && (
-          <div className="p-8 text-center text-gray-500">
-            No se encontraron empleados.
+            <div className="space-y-4">
+              <div className="font-semibold text-gray-700">Cargo:</div>
+              <div className="h-16 bg-gray-100 rounded flex items-center justify-center text-sm text-gray-500">
+                (Dropdown de Cargos Mock)
+              </div>
+            </div>
           </div>
         )}
+
+        {}
+        <div className="flex-grow bg-white rounded-xl border border-gray-100 shadow-xl overflow-hidden">
+          {view === "table" && <TableView />}
+          {view === "grid" && <GridView />}
+
+          {filteredEmployees.length === 0 && (
+            <div className="p-8 text-center text-gray-500">
+              No se encontraron empleados que coincidan con la búsqueda.
+            </div>
+          )}
+        </div>
       </div>
 
       <EmployeeFormModal

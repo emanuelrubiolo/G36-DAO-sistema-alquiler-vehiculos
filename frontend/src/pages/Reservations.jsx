@@ -1,33 +1,32 @@
 import { useState } from "react";
-import {
-  Search,
-  Plus,
-  Edit,
-  Trash2,
-  CheckCircle,
-  PlayCircle,
-} from "lucide-react";
+import { Plus } from "lucide-react";
 import mockReservations from "../mocks/reservations.json";
-import ReservationFormModal from "../components/reservation/ReservationFormModal";
+import ReservationList from "../components/reservation/ReservationList";
+import SearchBoxWithButton from "../components/ui/SearchBoxWithButton";
+import StyledPrimaryButton from "../components/ui/StyledPrimaryButton";
+import { Sliders, X, Edit, Trash2, CheckCircle, Eye } from "lucide-react";
 import FinishRentalModal from "../components/rental/FinishRentalModal";
 import mockVehicles from "../mocks/vehicles.json";
 import mockInvoices from "../mocks/invoices.json";
+import ReservationFormModal from "../components/reservation/ReservationFormModal";
 
 const StatusBadge = ({ status }) => {
-  const statusStyles = {
-    RESERVADO: "bg-blue-100 text-blue-800",
-    ALQUILADO: "bg-yellow-100 text-yellow-800",
-    INICIADO: "bg-purple-100 text-purple-800",
-    FINALIZADO: "bg-green-100 text-green-800",
-    CANCELADO: "bg-red-100 text-red-800",
+  const statusMap = {
+    RESERVADO: { text: "Reservado", color: "bg-indigo-100 text-indigo-800" },
+    ALQUILADO: { text: "Alquilado", color: "bg-blue-100 text-blue-800" },
+    INICIADO: { text: "En Curso", color: "bg-purple-100 text-purple-800" },
+    FINALIZADO: { text: "Finalizado", color: "bg-green-100 text-green-800" },
+    CANCELADO: { text: "Cancelado", color: "bg-red-100 text-red-800" },
+  };
+  const { text, color } = statusMap[status] || {
+    text: status,
+    color: "bg-yellow-100 text-yellow-800",
   };
   return (
     <span
-      className={`px-2.5 py-0.5 inline-flex text-xs font-semibold rounded-full ${
-        statusStyles[status] || "bg-gray-100 text-gray-800"
-      }`}
+      className={`px-2.5 py-0.5 inline-flex text-xs font-semibold rounded-full ${color}`}
     >
-      {status}
+      {text}
     </span>
   );
 };
@@ -43,12 +42,12 @@ const formatDate = (dateString) => {
 };
 
 export default function Reservations() {
+  const [searchTerm, setSearchTerm] = useState("");
   const [reservations, setReservations] = useState(mockReservations);
   const [vehicles, setVehicles] = useState(mockVehicles);
   const [invoices, setInvoices] = useState(mockInvoices);
-
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [view] = useState("table");
+  const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false);
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [reservationToEdit, setReservationToEdit] = useState(null);
@@ -57,17 +56,28 @@ export default function Reservations() {
   const [rentalToFinish, setRentalToFinish] = useState(null);
 
   const filteredReservations = reservations.filter((res) => {
-    const matchesSearch =
-      res.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      res.vehicleName.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter ? res.status === statusFilter : true;
-    return matchesSearch && matchesStatus;
+    const term = searchTerm.toLowerCase();
+
+    const vehiclePatente =
+      mockVehicles.find((v) => v.id === res.vehicleId)?.patente || "";
+
+    return (
+      res.clientName.toLowerCase().includes(term) ||
+      res.vehicleName.toLowerCase().includes(term) ||
+      res.id.toLowerCase().includes(term) ||
+      vehiclePatente.toLowerCase().includes(term)
+    );
   });
 
-  const handleOpenCreateModal = () => {
+  const handleSearchExecution = () => {
+    console.log("Ejecutando búsqueda de reservas con:", searchTerm);
+  };
+
+  const handleNewReservation = () => {
     setReservationToEdit(null);
     setIsEditModalOpen(true);
   };
+
   const handleOpenEditModal = (reservation) => {
     setReservationToEdit(reservation);
     setIsEditModalOpen(true);
@@ -92,6 +102,32 @@ export default function Reservations() {
     handleCloseEditModal();
   };
 
+  const handleStartRental = (reservation) => {
+    if (
+      !window.confirm(
+        `¿Iniciar el alquiler para ${reservation.clientName} con el ${reservation.vehicleName}?`
+      )
+    ) {
+      return;
+    }
+    setReservations((prev) =>
+      prev.map((r) =>
+        r.id === reservation.id
+          ? {
+              ...r,
+              status: "INICIADO",
+              fecha_confirmacion: new Date().toISOString(),
+            }
+          : r
+      )
+    );
+    setVehicles((prev) =>
+      prev.map((v) =>
+        v.id === reservation.vehicleId ? { ...v, estado: "NO_DISPONIBLE" } : v
+      )
+    );
+  };
+
   const handleOpenFinishModal = (rental) => {
     setRentalToFinish(rental);
     setIsFinishModalOpen(true);
@@ -112,7 +148,7 @@ export default function Reservations() {
     );
     setVehicles((prevVehicles) =>
       prevVehicles.map((v) =>
-        v.id === rental.vehicleId
+        v.id === rentalToFinish.vehicleId
           ? {
               ...v,
               estado: "DISPONIBLE",
@@ -131,211 +167,96 @@ export default function Reservations() {
       status: "NO COBRADA",
     };
     setInvoices((prevInvoices) => [newInvoice, ...prevInvoices]);
-
     setIsFinishModalOpen(false);
     setRentalToFinish(null);
   };
 
   const handleDelete = (reservationId) => {
-    if (window.confirm("¿Estás seguro de que quieres eliminar esta reserva?")) {
-      setReservations((prev) => prev.filter((r) => r.id !== reservationId));
+    if (window.confirm("¿Estás seguro de que quieres CANCELAR esta reserva?")) {
+      setReservations((prev) =>
+        prev.map((r) =>
+          r.id === reservationId
+            ? {
+                ...r,
+                status: "CANCELADO",
+                fecha_cancelacion: new Date().toISOString(),
+              }
+            : r
+        )
+      );
     }
-  };
-
-  const handleStartRental = (reservation) => {
-    if (
-      !window.confirm(
-        `¿Iniciar el alquiler para ${reservation.clientName} con el ${reservation.vehicleName}?`
-      )
-    ) {
-      return;
-    }
-
-    setReservations((prev) =>
-      prev.map((r) =>
-        r.id === reservation.id ? { ...r, status: "INICIADO" } : r
-      )
-    );
-
-    setVehicles((prev) =>
-      prev.map((v) =>
-        v.id === reservation.vehicleId ? { ...v, estado: "NO_DISPONIBLE" } : v
-      )
-    );
-
-    console.log("Alquiler iniciado:", reservation.id);
   };
 
   return (
     <section className="space-y-6">
-      <header>
+      {}
+      <header className="flex justify-between items-center pb-2">
         <h1 className="text-3xl font-bold text-gray-900">
           Gestión de Reservas
         </h1>
+        {}
+        <StyledPrimaryButton onClick={handleNewReservation}>
+          <Plus className="w-5 h-5" />
+          <span>Nueva Reserva</span>
+        </StyledPrimaryButton>
       </header>
 
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-        <div className="p-4 sm:p-6 flex flex-col sm:flex-row sm:justify-between gap-4 border-b border-gray-200">
-          <div className="relative w-full sm:w-60">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar por cliente o vehículo..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          </div>
-          <div className="relative w-full sm:w-48">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Todos los estados</option>
-              <option value="RESERVADO">Reservado</option>
-              <option value="ALQUILADO">Alquilado</option>
-              <option value="INICIADO">Iniciado</option>
-              <option value="FINALIZADO">Finalizado</option>
-              <option value="CANCELADO">Cancelado</option>
-            </select>
-          </div>
-          <button
-            onClick={handleOpenCreateModal}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-sm hover:bg-blue-700 transition-colors duration-200 sm:w-auto w-full"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Registrar Reserva</span>
-          </button>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-max divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
-                >
-                  Cliente
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
-                >
-                  Vehículo
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
-                >
-                  Período
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
-                >
-                  Total
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
-                >
-                  Estado
-                </th>
-                <th scope="col" className="relative px-6 py-3">
-                  <span className="sr-only">Acciones</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredReservations.map((res) => (
-                <tr key={res.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {res.clientName}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {res.vehicleName}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-800">
-                      Inicia: {formatDate(res.startDate)}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      Finaliza: {formatDate(res.endDate)}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-semibold text-gray-900">
-                      ${res.total}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <StatusBadge status={res.status} />
-                  </td>
-
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex justify-end items-center gap-3">
-                      {res.status === "ALQUILADO" ||
-                      res.status === "INICIADO" ? (
-                        <button
-                          onClick={() => handleOpenFinishModal(res)}
-                          className="text-green-600 hover:text-green-800"
-                          title="Finalizar Alquiler"
-                        >
-                          <CheckCircle className="w-5 h-5" />
-                        </button>
-                      ) : null}
-
-                      {res.status === "RESERVADO" ? (
-                        <button
-                          onClick={() => handleStartRental(res)}
-                          className="text-blue-600 hover:text-blue-800"
-                          title="Iniciar Alquiler"
-                        >
-                          <PlayCircle className="w-5 h-5" />
-                        </button>
-                      ) : null}
-
-                      {res.status === "RESERVADO" ||
-                      res.status === "CANCELADO" ? (
-                        <button
-                          onClick={() => handleOpenEditModal(res)}
-                          className="text-gray-500 hover:text-gray-800"
-                          title="Modificar/Ver Detalles"
-                        >
-                          <Edit className="w-5 h-5" />
-                        </button>
-                      ) : null}
-
-                      {res.status !== "FINALIZADO" ? (
-                        <button
-                          onClick={() => handleDelete(res.id)}
-                          className="text-red-600 hover:text-red-800"
-                          title="Eliminar/Cancelar Reserva"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      ) : null}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {filteredReservations.length === 0 && (
-          <div className="p-8 text-center text-gray-500">
-            No se encontraron reservas que coincidan con los filtros.
-          </div>
-        )}
+      {}
+      <div className="flex gap-6">
+        <SearchBoxWithButton
+          searchTerm={searchTerm}
+          onSearchTermChange={setSearchTerm}
+          onSearchClick={handleSearchExecution}
+          onOpenAdvancedFilters={() => setIsAdvancedFilterOpen((prev) => !prev)}
+          view={view}
+          showViewToggle={false}
+          placeholder="Buscar por Cliente, Vehículo o ID de Reserva..."
+        />
       </div>
 
+      {}
+      <div className="mt-6 flex gap-6">
+        {}
+        {isAdvancedFilterOpen && (
+          <div className="w-64 bg-white rounded-xl shadow-lg border border-gray-100 p-5 shrink-0 transition-all duration-300">
+            <div className="flex justify-between items-center mb-4 pb-2 border-b">
+              <h3 className="font-bold text-lg flex items-center gap-2">
+                <Sliders className="w-5 h-5 text-gray-600" />
+                Filtros de Reserva
+              </h3>
+              <button
+                onClick={() => setIsAdvancedFilterOpen(false)}
+                className="btn size-8 rounded-full p-0 text-gray-500 hover:bg-gray-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="font-semibold text-gray-700">
+                Estado de la Reserva:
+              </div>
+              <div className="h-24 bg-gray-100 rounded flex items-center justify-center text-sm text-gray-500">
+                (Checkboxes de Estado)
+              </div>
+            </div>
+          </div>
+        )}
+
+        {}
+        <div className="flex-grow">
+          {}
+          <ReservationList
+            reservations={filteredReservations}
+            onStart={handleStartRental}
+            onFinish={handleOpenFinishModal}
+            onEdit={handleOpenEditModal}
+            onDelete={handleDelete}
+          />
+        </div>
+      </div>
+
+      {}
       <ReservationFormModal
         isOpen={isEditModalOpen}
         onClose={handleCloseEditModal}

@@ -1,38 +1,20 @@
 import { useState } from "react";
-import { Search, Plus, Edit, AlertCircle } from "lucide-react";
+import { Plus, Search, Sliders, X } from "lucide-react";
 import mockIncidents from "../mocks/incidents.json";
-
-import mockRentals from "../mocks/reservations.json";
-
+import IncidentList from "../components/incident/IncidentList";
 import IncidentFormModal from "../components/incident/IncidentFormModal";
-
-const formatDate = (dateString) => {
-  if (!dateString) return "N/A";
-  const options = { year: "numeric", month: "2-digit", day: "2-digit" };
-  return new Date(dateString).toLocaleDateString("es-AR", options);
-};
-
-const TypeBadge = ({ type }) => {
-  const isDamage = type === "Daño";
-  return (
-    <span
-      className={`px-2.5 py-0.5 inline-flex text-xs font-semibold rounded-full ${
-        isDamage ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800"
-      }`}
-    >
-      {type}
-    </span>
-  );
-};
+import mockRentals from "../mocks/reservations.json";
+import SearchBoxWithButton from "../components/ui/SearchBoxWithButton";
+import StyledPrimaryButton from "../components/ui/StyledPrimaryButton";
 
 export default function Incidents() {
   const [incidents, setIncidents] = useState(mockIncidents);
+  const [rentalsList] = useState(mockRentals);
   const [searchTerm, setSearchTerm] = useState("");
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [incidentToEdit, setIncidentToEdit] = useState(null);
-
-  const [rentalsList, setRentalsList] = useState(mockRentals);
+  const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false);
 
   const filteredIncidents = incidents.filter(
     (incident) =>
@@ -40,6 +22,10 @@ export default function Incidents() {
       incident.vehicleName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       incident.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleSearchExecution = () => {
+    console.log("Ejecutando búsqueda de incidentes con:", searchTerm);
+  };
 
   const handleOpenCreateModal = () => {
     setIncidentToEdit(null);
@@ -73,126 +59,73 @@ export default function Incidents() {
     handleCloseModal();
   };
 
+  const handleDelete = (incidentId) => {
+    if (
+      window.confirm("¿Estás seguro de que quieres eliminar este incidente?")
+    ) {
+      setIncidents((prev) => prev.filter((i) => i.id !== incidentId));
+    }
+  };
+
   return (
     <section className="space-y-6">
-      <header>
+      <header className="flex justify-between items-center pb-2">
         <h1 className="text-3xl font-bold text-gray-900">
           Gestión de Incidentes
         </h1>
+        <StyledPrimaryButton onClick={handleOpenCreateModal}>
+          <Plus className="w-5 h-5" />
+          <span>Registrar Incidente</span>
+        </StyledPrimaryButton>
       </header>
 
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-        <div className="p-4 sm:p-6 flex flex-col sm:flex-row sm:justify-between gap-4 border-b border-gray-200">
-          <div className="relative w-full sm:w-72">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar por cliente, vehículo o descripción..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          </div>
-
-          <button
-            onClick={handleOpenCreateModal}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-sm hover:bg-blue-700 transition-colors duration-200"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Registrar Incidente</span>
-          </button>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-max divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
-                >
-                  Alquiler / Cliente
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
-                >
-                  Vehículo / Descripción
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
-                >
-                  Tipo
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
-                >
-                  Costo
-                </th>
-                <th scope="col" className="relative px-6 py-3">
-                  <span className="sr-only">Acciones</span>
-                </th>
-              </tr>
-            </thead>
-
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredIncidents.map((incident) => (
-                <tr key={incident.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {incident.clientName}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      Alquiler ID: {incident.rentalId}
-                    </div>
-                  </td>
-
-                  <td className="px-6 py-4 whitespace-nowrawrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {incident.vehicleName}
-                    </div>
-                    <div className="text-sm text-gray-500 truncate max-w-xs">
-                      {incident.description}
-                    </div>
-                  </td>
-
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <TypeBadge type={incident.type} />
-                  </td>
-
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm font-semibold text-gray-900">
-                      ${incident.cost}
-                    </span>
-                  </td>
-
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex justify-end items-center gap-3">
-                      <button
-                        onClick={() => handleOpenEditModal(incident)}
-                        className="text-blue-600 hover:text-blue-800"
-                        title="Modificar/Ver Detalles"
-                      >
-                        <Edit className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {filteredIncidents.length === 0 && (
-          <div className="p-8 text-center text-gray-500">
-            No se encontraron incidentes.
-          </div>
-        )}
+      <div className="flex gap-6">
+        <SearchBoxWithButton
+          searchTerm={searchTerm}
+          onSearchTermChange={setSearchTerm}
+          onSearchClick={handleSearchExecution}
+          onOpenAdvancedFilters={() => setIsAdvancedFilterOpen((prev) => !prev)}
+          view="table"
+          showViewToggle={false}
+          placeholder="Buscar por Alquiler, Cliente o Descripción..."
+        />
       </div>
 
-      {}
+      <div className="mt-6 flex gap-6">
+        {isAdvancedFilterOpen && (
+          <div className="w-64 bg-white rounded-xl shadow-lg border border-gray-100 p-5 shrink-0 transition-all duration-300">
+            <div className="flex justify-between items-center mb-4 pb-2 border-b">
+              <h3 className="font-bold text-lg flex items-center gap-2">
+                <Sliders className="w-5 h-5 text-gray-600" />
+                Filtros de Incidente
+              </h3>
+              <button
+                onClick={() => setIsAdvancedFilterOpen(false)}
+                className="btn size-8 rounded-full p-0 text-gray-500 hover:bg-gray-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="font-semibold text-gray-700">Tipo:</div>
+              <div className="h-16 bg-gray-100 rounded flex items-center justify-center text-sm text-gray-500">
+                (Daño / Multa)
+              </div>
+            </div>
+          </div>
+        )}
+
+        {}
+        <div className="flex-grow">
+          <IncidentList
+            incidents={filteredIncidents ?? []}
+            onEdit={handleOpenEditModal}
+            onDelete={handleDelete}
+          />
+        </div>
+      </div>
+
       <IncidentFormModal
         isOpen={isModalOpen}
         onClose={handleCloseModal}

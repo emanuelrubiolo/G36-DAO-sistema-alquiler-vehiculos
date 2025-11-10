@@ -1,0 +1,14 @@
+{
+  "entry": [
+    "src/main.{js,jsx,ts,tsx}", // Abarca todas las extensiones comunes de entrada
+    "vite.config.{js,ts}",
+    "package.json"
+  ],
+  "project": [
+    "src/**/*.{js,jsx,ts,tsx}" // Abarca todo el código fuente común
+  ],
+  "rules": {
+    "files": "warn",
+    "dependencies": "warn"
+  }
+}

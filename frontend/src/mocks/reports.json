@@ -1,0 +1,59 @@
+{
+  "rentalsByClient": [
+    {
+      "clientName": "Marcos Roldán",
+      "rentalId": "r001",
+      "vehicleName": "Toyota Corolla",
+      "startDate": "2025-11-20",
+      "endDate": "2025-11-25",
+      "total": 225
+    },
+    {
+      "clientName": "Carla Giménez",
+      "rentalId": "r002",
+      "vehicleName": "Volkswagen Golf",
+      "startDate": "2025-11-22",
+      "endDate": "2025-11-24",
+      "total": 80
+    },
+    {
+      "clientName": "Lucía Paez",
+      "rentalId": "r003",
+      "vehicleName": "Toyota Corolla",
+      "startDate": "2025-12-01",
+      "endDate": "2025-12-10",
+      "total": 450
+    },
+    {
+      "clientName": "Lucía Paez",
+      "rentalId": "r008",
+      "vehicleName": "Ford Ranger",
+      "startDate": "2025-12-12",
+      "endDate": "2025-12-13",
+      "total": 180
+    }
+  ],
+  "rentalsByMonth": [
+    {
+      "month": "Noviembre 2025",
+      "rentalId": "r001",
+      "clientName": "Marcos Roldán",
+      "vehicleName": "Toyota Corolla",
+      "total": 225
+    },
+    {
+      "month": "Noviembre 2025",
+      "rentalId": "r002",
+      "clientName": "Carla Giménez",
+      "vehicleName": "Volkswagen Golf",
+      "total": 80
+    },
+    {
+      "month": "Diciembre 2025",
+      "rentalId": "r003",
+      "clientName": "Lucía Paez",
+      "vehicleName": "Toyota Corolla",
+      "total": 450
+    }
+  ]
+}

@@ -7,7 +7,6 @@ import Clients from "./pages/Clients";
 import Invoices from "./pages/Invoices";
 import Maintenance from "./pages/Maintenance";
 import Incidents from "./pages/Incidents";
-import Reports from "./pages/Reports";
 import Rentals from "./pages/Rentals";
 import Employees from "./pages/Employees";
 import Users from "./pages/Users";
@@ -34,7 +33,6 @@ function App() {
         <Route path="facturacion" element={<Invoices />} />
         <Route path="mantenimiento" element={<Maintenance />} />
         <Route path="incidentes" element={<Incidents />} />
-        <Route path="reportes" element={<Reports />} />
         <Route path="alquileres" element={<Rentals />} />
         <Route path="empleados" element={<Employees />} />
         <Route path="usuarios" element={<Users />} />

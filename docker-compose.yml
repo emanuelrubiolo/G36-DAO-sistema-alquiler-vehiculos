@@ -1,31 +1,19 @@
-version: '3.8'
-
 services:
   backend:
-    build: ./backend
-    container_name: dao_backend
+    build: .
     ports:
-      - "8000:8000"
-    volumes:
-      - ./backend:/app
-      # Ya no necesitamos el volumen de /data
-    environment:
-      # Le decimos a FastAPI cómo conectarse a la BD
-      - DATABASE_URL=mysql+pymysql://root:mi_clave_secreta@db:3306/alquileres_db
-    depends_on:
-      - db  # Le dice a Docker que levante la BD *antes* que el backend
+      - '8000:8000'
+
 
   db:
-    image: mysql:8.0.33  # Usamos una imagen oficial de MySQL
-    container_name: dao_mysql_db
+    image: mysql:8.0.33
     environment:
-      - MYSQL_ROOT_PASSWORD=mi_clave_secreta
-      - MYSQL_DATABASE=alquileres_db
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_DATABASE: alquiler_db
     ports:
-      - "3306:3306" # Opcional: si quieres conectarte desde tu PC (ej. DBeaver)
+      - '3306:3306'
     volumes:
-      - mysql_data:/var/lib/mysql # Usamos un volumen "nombrado" para persistencia
+      - mysql_data:/var/lib/mysql
 
-# Docker maneja este volumen. Aquí se guardarán los datos de MySQL.
 volumes:
   mysql_data:

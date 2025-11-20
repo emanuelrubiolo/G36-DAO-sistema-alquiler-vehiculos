@@ -1,0 +1,223 @@
+import { useState } from "react";
+import { Search, Sliders, X, CheckCircle, Eye, Download } from "lucide-react";
+import mockInvoices from "../mocks/invoices.json";
+import mockReservations from "../mocks/reservations.json";
+
+import SearchBoxWithButton from "../components/ui/SearchBoxWithButton";
+import StyledPrimaryButton from "../components/ui/StyledPrimaryButton";
+
+import GenericTable from "../components/ui/GenericTable";
+
+import TableActionCell from "../components/ui/TableActionCell";
+import InvoiceDetailModal from "../components/invoice/InvoiceDetailModal";
+
+import { formatCurrency, formatDate } from "../utils/formatters";
+
+const InvoiceStatusBadge = ({ status }) => {
+  const isPaid = status === "COBRADA";
+  return (
+    <span
+      className={`px-2.5 py-0.5 inline-flex text-xs font-semibold rounded-full ${
+        isPaid ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
+      }`}
+    >
+      {status}
+    </span>
+  );
+};
+
+export default function Invoices() {
+  const [invoices, setInvoices] = useState(mockInvoices);
+  const [reservations] = useState(mockReservations);
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [selectedDetail, setSelectedDetail] = useState({
+    invoice: null,
+    rental: null,
+  });
+  const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false);
+
+  const filteredInvoices = invoices.filter((invoice) => {
+    const matchesSearch =
+      invoice.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      invoice.rentalId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      invoice.id.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter ? invoice.status === statusFilter : true;
+    return matchesSearch && matchesStatus;
+  });
+
+  const handleSearchExecution = () => {
+    console.log("Ejecutando búsqueda de facturas con:", searchTerm);
+  };
+
+  const handleMarkAsPaid = (invoice) => {
+    if (
+      window.confirm(
+        `¿Confirmar que la factura ID ${invoice.id} ha sido COBRADA?`
+      )
+    ) {
+      setInvoices((prev) =>
+        prev.map((inv) =>
+          inv.id === invoice.id ? { ...inv, status: "COBRADA" } : inv
+        )
+      );
+    }
+  };
+
+  const handleOpenDetailModal = (invoice) => {
+    const rental = reservations.find((r) => r.id === invoice.rentalId);
+    setSelectedDetail({ invoice, rental });
+    setIsDetailModalOpen(true);
+  };
+
+  const handleCloseDetailModal = () => {
+    setIsDetailModalOpen(false);
+    setSelectedDetail({ invoice: null, rental: null });
+  };
+
+  const columns = [
+    { header: "Factura / Alquiler", field: "invoiceId" },
+    { header: "Cliente", field: "clientName" },
+    { header: "Fecha Emisión", field: "issueDate" },
+    { header: "Total", field: "total", align: "right" },
+    { header: "Estado", field: "status" },
+  ];
+
+  return (
+    <section className="space-y-6">
+      <header className="flex justify-between items-center pb-2">
+        <h1 className="text-3xl font-bold text-gray-900">
+          Gestión de Facturación
+        </h1>
+        <StyledPrimaryButton className="bg-green-600 hover:bg-green-700">
+          <Download className="w-5 h-5" />
+          <span>Exportar Datos</span>
+        </StyledPrimaryButton>
+      </header>
+
+      <div className="flex gap-6">
+        <SearchBoxWithButton
+          searchTerm={searchTerm}
+          onSearchTermChange={setSearchTerm}
+          onSearchClick={handleSearchExecution}
+          onOpenAdvancedFilters={() => setIsAdvancedFilterOpen((prev) => !prev)}
+          showViewToggle={false}
+          placeholder="Buscar por Cliente, ID Factura o ID Alquiler..."
+        />
+      </div>
+
+      <div className="mt-6 flex gap-6">
+        {}
+        {isAdvancedFilterOpen && (
+          <div className="w-64 bg-white rounded-xl shadow-lg border border-gray-100 p-5 shrink-0 transition-all duration-300">
+            <div className="flex justify-between items-center mb-4 pb-2 border-b">
+              <h3 className="font-bold text-lg flex items-center gap-2">
+                <Sliders className="w-5 h-5 text-gray-600" />
+                Filtros de Factura
+              </h3>
+              <button
+                onClick={() => setIsAdvancedFilterOpen(false)}
+                className="btn size-8 rounded-full p-0 text-gray-500 hover:bg-gray-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="font-semibold text-gray-700">
+                Estado de Cobro:
+              </div>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Todos los estados</option>
+                <option value="COBRADA">Cobrada</option>
+                <option value="NO COBRADA">No Cobrada</option>
+              </select>
+            </div>
+          </div>
+        )}
+
+        {}
+        <div className="flex-grow">
+          <GenericTable
+            columns={columns}
+            data={filteredInvoices}
+            emptyMessage="No se encontraron facturas que coincidan con los filtros."
+          >
+            {}
+            {(invoice) => (
+              <tr
+                key={invoice.id}
+                className="hover:bg-gray-50 transition-colors duration-150"
+              >
+                {}
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm font-medium text-gray-900">
+                    ID Factura: {invoice.id}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    ID Alquiler: {invoice.rentalId}
+                  </div>
+                </td>
+
+                {}
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm font-medium text-gray-900">
+                    {invoice.clientName}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {invoice.paymentMethod}
+                  </div>
+                </td>
+
+                {}
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-800">
+                    {formatDate(invoice.issueDate)}
+                  </div>
+                </td>
+
+                {}
+                <td className="px-6 py-4 whitespace-nowrap text-right">
+                  <div className="text-sm font-extrabold text-gray-900">
+                    {formatCurrency(invoice.total)}
+                  </div>
+                </td>
+
+                {}
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <InvoiceStatusBadge status={invoice.status} />
+                </td>
+
+                {}
+                <TableActionCell
+                  data={invoice}
+                  onView={handleOpenDetailModal}
+                  onAction={
+                    invoice.status === "NO COBRADA" ? handleMarkAsPaid : null
+                  }
+                  additionalActionIcon={CheckCircle}
+                  additionalActionTitle="Marcar como Cobrada"
+                  hideDelete={true}
+                />
+              </tr>
+            )}
+          </GenericTable>
+        </div>
+      </div>
+
+      <InvoiceDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={handleCloseDetailModal}
+        invoice={selectedDetail.invoice}
+        rental={selectedDetail.rental}
+      />
+    </section>
+  );
+}

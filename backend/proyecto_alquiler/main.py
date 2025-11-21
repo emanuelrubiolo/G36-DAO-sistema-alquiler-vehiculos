@@ -37,6 +37,3 @@ if __name__ == "__main__":
     respuesta = ctrl_clientes.get_clientes()
     print(f"Response: {respuesta}\n")
     
-    print("✅ Sistema funcionando con estructura modular")
-    print("✅ Separación de responsabilidades (MVC)")
-    print("✅ Aplicando los 4 pilares de POO")

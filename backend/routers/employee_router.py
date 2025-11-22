@@ -11,8 +11,6 @@ router = APIRouter(
 )
 
 
-
-
 @router.get("/", response_model=list[EmployeeResponse])
 def read_employees(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     employees = db.query(Employee).offset(skip).limit(limit).all()
@@ -45,7 +43,6 @@ def update_employee(id_empleado: int, employee: EmployeeUpdate, db: Session = De
     db.commit()
     db.refresh(db_employee)
     return db_employee
-
 
 @router.delete("/{id_empleado}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_employee(id_empleado: int, db: Session = Depends(get_db)):

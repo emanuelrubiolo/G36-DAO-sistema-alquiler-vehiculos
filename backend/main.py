@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.routers import employee_router
+from backend.routers import employee_router, user_router
 
 #todo: from routers import
 
@@ -22,6 +22,7 @@ app.add_middleware(
 #todo: crear esquemas
 
 app.include_router(employee_router.router)
+app.include_router(user_router.router)
 
 @app.get("/")
 def root():

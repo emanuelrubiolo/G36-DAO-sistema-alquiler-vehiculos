@@ -94,8 +94,8 @@ def delete_user(id_usuario: int, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.id == id_usuario).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
-    #todo: cambiar db.delete por db_user.is_active = False |
-    # Para esto hay que agregar el campo is_active a la tabla Users y al modelo/schemas
+
+    #todo: cambiar funcionalidad para una soft delete, como en clientes
     db.delete(db_user)
     db.commit()
     return

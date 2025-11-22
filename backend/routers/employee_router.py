@@ -49,8 +49,8 @@ def delete_employee(id_empleado: int, db: Session = Depends(get_db)):
     db_employee = db.query(Employee).filter(Employee.id == id_empleado).first()
     if not db_employee:
         raise HTTPException(status_code=404, detail="Employee not found")
-    #todo: cambiar db.delete por db_employee.is_active = False |
-    # Para esto hay que agregar el campo is_active a la tabla Employee y al modelo/schemas
+
+    #todo: cambiar funcionalidad para una soft delete, como en clientes
     db.delete(db_employee)
     db.commit()
     return

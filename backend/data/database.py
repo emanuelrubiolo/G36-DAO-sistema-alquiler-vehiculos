@@ -1,43 +1,42 @@
 import os
+import ssl
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from .config import settings
 
-#Certificados
+# Certificados
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CERTS_DIR = os.path.join(BASE_DIR, "certificados")
+print(CERTS_DIR)
 
-ssl_args = {
-    "ssl": {
-        "ca": os.path.join(CERTS_DIR, "server-ca.pem"),
-        "cert": os.path.join(CERTS_DIR, "client-cert.pem"),
-        "key": os.path.join(CERTS_DIR, "client-key.pem")
-    }
-}
+# Create SSL context - bypass strict verification
+ssl_context = ssl.create_default_context()
+ssl_context.check_hostname = False
+ssl_context.verify_mode = ssl.CERT_NONE
 
-# CONEXIÓN SEGURA SSL
-engine = create_engine(
-    settings.DATABASE_URL,
-    connect_args=ssl_args,
-    pool_pre_ping=True
+# Load client certificates for authentication
+ssl_context.load_cert_chain(
+    certfile=os.path.join(CERTS_DIR, "client-cert.pem"),
+    keyfile=os.path.join(CERTS_DIR, "client-key.pem")
 )
 
-# --- OPCIÓN B: CONEXIÓN ESTÁNDAR
-# engine = create_engine(
-#     settings.DATABASE_URL,
-#     pool_pre_ping=True
-# )
+# Build connection string
+DATABASE_URL = f"mysql+pymysql://{settings.DB_USER}:{settings.DB_PASSWORD}@{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}"
 
-# 4. Crear la Sesión (SessionLocal)
-# Esta es la fábrica que creará sesiones para cada petición
+# Create engine with SSL context
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"ssl": ssl_context}
+)
+
+# Create Session
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# 5. Crear la Clase Base
-# Todos tus modelos (Usuario, Vehiculo, etc.) heredarán de esta clase
-Base = DeclarativeBase()
-#https://medium.com/towards-data-engineering/fastapi-with-sql-1c7852ccbf21
+# Create Base class
+class Base(DeclarativeBase):
+    pass
 
-# 6. Dependencia para obtener la DB (Para usar en los Routers)
+# Dependency to get DB
 def get_db():
     db = SessionLocal()
     try:

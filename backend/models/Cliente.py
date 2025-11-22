@@ -6,7 +6,7 @@ from backend.data.database import Base
 class Cliente(Base):
     __tablename__ = "Clientes"
 
-    id_Empleado = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    id_Cliente = Column(Integer, primary_key=True, index=True, autoincrement=True)
     nombre = Column(String)
     dni = Column(String, unique=True)
     telefono = Column(String)

@@ -6,5 +6,5 @@ __pycache__
 
 backend/certificados/client-cert.pem
 backend/certificados/client-key.pem
-backend/certificados/ca.pem
+backend/certificados/server-ca.pem
 backend/data/config.py

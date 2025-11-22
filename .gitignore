@@ -2,6 +2,7 @@
 /.vscode
 /.venv
 __pycache__
+.env
 
-data/
-mysql_data/
+backend/certificados
+backend/data/config.py

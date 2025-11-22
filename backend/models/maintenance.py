@@ -1,4 +1,5 @@
 from sqlalchemy.dialects.mysql import DATETIME
+from sqlalchemy.orm import relationship
 
 from backend.data.database import Base
 from sqlalchemy import Integer, String, Column, ForeignKey, DECIMAL
@@ -16,3 +17,7 @@ class Maintenance(Base):
     type = Column(String(255))
     description = Column(String(255))
     cost = Column(DECIMAL(10,2))
+
+    
+    vehicle = relationship("Vehicle", back_populates="maintenances")
+    employee = relationship("Employee", back_populates="maintenances")

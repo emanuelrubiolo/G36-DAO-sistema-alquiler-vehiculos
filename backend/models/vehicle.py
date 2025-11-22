@@ -1,3 +1,5 @@
+from sqlalchemy.orm import relationship
+
 from backend.data.database import Base
 from sqlalchemy import Integer, String, Column, ForeignKey, DECIMAL
 
@@ -16,3 +18,6 @@ class Vehicle(Base):
     fuel = Column(String(45))
     kilometraje_actual = Column(Integer) #todo: traducir aca y en bd
     estado = Column(String(255)) #todo: traducir aca y en bd
+
+# models/vehicle.py - Add this line
+    maintenances = relationship("Maintenance", back_populates="vehicle")

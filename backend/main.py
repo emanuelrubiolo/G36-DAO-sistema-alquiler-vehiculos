@@ -1,9 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.routers import employee_router
-import backend
-from backend.data.database import engine, Base
-
 
 #todo: from routers import
 
@@ -15,7 +12,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # En producción, especificar dominios
+    allow_origins=["*"],  # todo: validar con ema
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

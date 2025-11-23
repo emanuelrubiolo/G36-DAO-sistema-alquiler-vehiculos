@@ -26,3 +26,4 @@ class Lease(Base):
     vehicle = relationship("Vehicle", back_populates="leases")
     employee = relationship("Employee", back_populates="leases")
     invoice = relationship("Invoice", back_populates="lease", uselist=False)
+    incidents = relationship("Incident", back_populates="lease")

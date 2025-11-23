@@ -237,3 +237,71 @@ def cancel_invoice(id_factura: int, db: Session = Depends(get_db)):
             if db_invoice.lease else None
         )
     }
+
+#todo: integracion con incidente. Habria que reemplazar el metodo create_invoice por un metodo que reciba un incidente
+
+# @router.post("/", response_model=InvoiceResponse, status_code=status.HTTP_201_CREATED)
+# def create_invoice(invoice: InvoiceCreate, db: Session = Depends(get_db)):
+#     """Genera una factura para un alquiler (1:1). Calcula total = monto alquiler + incidentes."""
+#
+#     # Validate lease exists
+#     lease = db.query(Lease).filter(Lease.id == invoice.rentalId).first()
+#     if not lease:
+#         raise HTTPException(status_code=404, detail="Lease not found")
+#
+#     # Check if lease already has an invoice
+#     existing_invoice = db.query(Invoice).filter(Invoice.rentalId == invoice.rentalId).first()
+#     if existing_invoice:
+#         raise HTTPException(
+#             status_code=400,
+#             detail=f"Lease already has an invoice (Invoice ID: {existing_invoice.id})"
+#         )
+#
+#     # Validate lease is finalized
+#     if lease.state != "finalizado":
+#         raise HTTPException(
+#             status_code=400,
+#             detail=f"Cannot create invoice for lease in state '{lease.state}'. Lease must be 'finalizado'."
+#         )
+#
+#     # Calculate total: lease amount + incidents
+#     total = lease.amount if lease.amount else Decimal(0)
+#
+#     # Add all incident costs from this lease
+#     from backend.models.incident import Incident
+#     incidents = db.query(Incident).filter(Incident.rentalId == lease.id).all()
+#     for incident in incidents:
+#         if incident.cost:
+#             total += incident.cost
+#
+#     # Create invoice
+#     db_invoice = Invoice(
+#         rentalId=invoice.rentalId,
+#         clientName=lease.client.name if lease.client else "Unknown",
+#         issuedDate=date.today(),
+#         total=total,
+#         paymentMethod=invoice.paymentMethod,
+#         status="pendiente"
+#     )
+#
+#     db.add(db_invoice)
+#     db.commit()
+#     db.refresh(db_invoice)
+#
+#     return {
+#         "id": db_invoice.id,
+#         "rentalId": db_invoice.rentalId,
+#         "clientName": db_invoice.clientName,
+#         "issuedDate": db_invoice.issuedDate,
+#         "total": db_invoice.total,
+#         "paymentMethod": db_invoice.paymentMethod,
+#         "status": db_invoice.status,
+#         "vehicleInfo": (
+#             f"{db_invoice.lease.vehicle.brand} {db_invoice.lease.vehicle.model} - {db_invoice.lease.vehicle.patente}"
+#             if db_invoice.lease and db_invoice.lease.vehicle else None
+#         ),
+#         "leaseDates": (
+#             f"{db_invoice.lease.date_time_start.strftime('%Y-%m-%d')} to {db_invoice.lease.date_time_end.strftime('%Y-%m-%d')}"
+#             if db_invoice.lease else None
+#         )
+#     }

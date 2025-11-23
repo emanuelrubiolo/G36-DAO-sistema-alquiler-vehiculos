@@ -17,3 +17,4 @@ class Employee(Base):
     users = relationship("User", back_populates="employee", passive_deletes=True)
     maintenances = relationship("Maintenance", back_populates="employee")
     leases = relationship("Lease", back_populates="employee")
+    incidents = relationship("Incident", back_populates="employee")

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.routers import employee_router, user_router, client_router, vehicle_router, maintenance_router, \
-    lease_router, invoice_router, incident_router
+    lease_router, invoice_router, incident_router, dashboard_router
 
 #todo: from routers import
 
@@ -30,6 +30,7 @@ app.include_router(maintenance_router.router)
 app.include_router(lease_router.router)
 app.include_router(invoice_router.router)
 app.include_router(incident_router.router)
+app.include_router(dashboard_router.router)
 
 @app.get("/")
 def root():

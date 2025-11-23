@@ -25,3 +25,4 @@ class Lease(Base):
     client = relationship("Client", back_populates="leases")
     vehicle = relationship("Vehicle", back_populates="leases")
     employee = relationship("Employee", back_populates="leases")
+    invoice = relationship("Invoice", back_populates="lease", uselist=False)

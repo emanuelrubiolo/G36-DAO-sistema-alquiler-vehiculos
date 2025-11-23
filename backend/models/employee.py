@@ -16,3 +16,4 @@ class Employee(Base):
     #todo: agregar restricción para evitar borrar el usuario o para dejar al usuario sin empleado
     users = relationship("User", back_populates="employee", passive_deletes=True)
     maintenances = relationship("Maintenance", back_populates="employee")
+    leases = relationship("Lease", back_populates="employee")

@@ -19,5 +19,5 @@ class Vehicle(Base):
     kilometraje_actual = Column(Integer) #todo: traducir aca y en bd
     estado = Column(String(255)) #todo: traducir aca y en bd
 
-# models/vehicle.py - Add this line
     maintenances = relationship("Maintenance", back_populates="vehicle")
+    leases = relationship("Lease", back_populates="vehicle")

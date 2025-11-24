@@ -11,8 +11,8 @@ from backend.models.employee import Employee
 from backend.schemas.maintenance_schemas import MaintenanceCreate, MaintenanceResponse, MaintenanceUpdate
 
 router = APIRouter(
-    prefix="/mantenimientos",
-    tags=["mantenimientos"],
+    prefix="/mantenimiento",
+    tags=["mantenimiento"],
 )
 
 

@@ -82,6 +82,7 @@ export default function Incidents() {
   };
 
   const handleDelete = async (incidentId) => {
+    
     if (
       window.confirm("¿Estás seguro de que quieres eliminar este incidente?")
     ) {

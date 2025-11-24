@@ -173,3 +173,23 @@ def update_incident(id_incidente: int, incident: IncidentUpdate, db: Session = D
         "employeeName": db_incident.employee.name if db_incident.employee else None,
         "leaseState": db_incident.lease.state if db_incident.lease else None
     }
+
+@router.delete("/{id_incidente}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_incident(id_incidente: int, db: Session = Depends(get_db)):
+    """Eliminar incidente."""
+    db_incident = db.query(Incident).filter(Incident.id == id_incidente).first()
+    if not db_incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+
+    # Check if the related lease is finalized (can't delete incidents after finalization)
+    if db_incident.lease and db_incident.lease.state == "finalizado":
+        # Check if invoice exists
+        if db_incident.lease.invoice:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot delete incident for a lease with an existing invoice"
+            )
+
+    db.delete(db_incident)
+    db.commit()
+    return

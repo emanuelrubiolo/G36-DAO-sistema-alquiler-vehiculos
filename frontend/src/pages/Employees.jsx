@@ -100,13 +100,14 @@ export default function Employees() {
   };
 
   const handleDelete = async (employee) => {
+  
     if (
       window.confirm(
-        `¿Estás seguro de que quieres eliminar a ${employee.name}?`
+        `¿Estás seguro de que quieres eliminar a ${employee?.name || "este empleado"}?`
       )
     ) {
       try {
-        await employeeService.delete(employee.id);
+        await employeeService.delete(employee);
         alert("Empleado eliminado exitosamente");
         await loadData();
       } catch (error) {

@@ -1,7 +1,5 @@
 import { X } from "lucide-react";
 import { useState, useEffect } from "react";
-import mockClients from "../../mocks/clients.json";
-import mockVehicles from "../../mocks/vehicles.json";
 import { useAuth } from "../../context/AuthContext";
 
 const FormSelect = ({ label, id, children, ...props }) => (
@@ -37,10 +35,15 @@ const FormInput = ({ label, id, ...props }) => (
   </div>
 );
 
-export default function RentalFormModal({ isOpen, onClose, onSubmit }) {
+export default function RentalFormModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  clientsList = [],
+  vehiclesList = [],
+}) {
   const { currentUser } = useAuth();
-  const [clientsList] = useState(mockClients);
-  const [vehiclesList] = useState(mockVehicles);
+
   const availableVehicles = vehiclesList.filter(
     (v) => v.estado === "DISPONIBLE"
   );
@@ -175,7 +178,7 @@ export default function RentalFormModal({ isOpen, onClose, onSubmit }) {
               onChange={handleChange}
               required
             >
-              {mockClients.map((client) => (
+              {clientsList.map((client) => (
                 <option key={client.id} value={client.id}>
                   {client.name} (ID: {client.id})
                 </option>
@@ -247,7 +250,6 @@ export default function RentalFormModal({ isOpen, onClose, onSubmit }) {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm bg-gray-100 text-gray-600"
             />
 
-            {}
             <div className="md:col-span-2">
               <FormInput
                 label="Costo Estimado"

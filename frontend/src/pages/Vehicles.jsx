@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { Search, LayoutGrid, List, Sliders, X } from "lucide-react";
-import mockVehicles from "../mocks/vehicles.json";
+import { vehicleService } from "../services";
 import VehicleList from "../components/vehicle/VehicleList";
 import SearchBoxWithButton from "../components/ui/SearchBoxWithButton";
 
@@ -16,22 +16,51 @@ const getToggleClasses = (currentView, buttonView) => {
 export default function Vehicles() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState({});
-  const [vehicles] = useState(mockVehicles);
+  const [vehicles, setVehicles] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [view, setView] = useState("grid");
   const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const data = await vehicleService.getAll();
+      setVehicles(data);
+    } catch (error) {
+      console.error("Error loading vehicles:", error);
+      alert("Error al cargar vehículos");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredVehicles = vehicles.filter((v) => {
     const term = searchTerm.toLowerCase();
     return (
-      v.brand.toLowerCase().includes(term) ||
-      v.model.toLowerCase().includes(term) ||
-      v.patente.toLowerCase().includes(term)
+      v.brand?.toLowerCase().includes(term) ||
+      v.model?.toLowerCase().includes(term) ||
+      v.patente?.toLowerCase().includes(term)
     );
   });
 
   const handleSearchExecution = () => {
     console.log("Ejecutando búsqueda profunda con:", searchTerm);
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Cargando vehículos...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <section className="space-y-6">

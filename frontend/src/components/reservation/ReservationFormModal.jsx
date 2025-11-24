@@ -1,7 +1,5 @@
 import { X } from "lucide-react";
 import { useState, useEffect } from "react";
-import mockClients from "../../mocks/clients.json";
-import mockVehicles from "../../mocks/vehicles.json";
 import { useAuth } from "../../context/AuthContext";
 
 const FormSelect = ({ label, id, children, ...props }) => (
@@ -37,10 +35,14 @@ const FormInput = ({ label, id, ...props }) => (
   </div>
 );
 
-export default function ReservationFormModal({ isOpen, onClose, onSubmit }) {
+export default function ReservationFormModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  clientsList = [],
+  vehiclesList = [],
+}) {
   const { currentUser } = useAuth();
-  const [clientsList] = useState(mockClients);
-  const [vehiclesList] = useState(mockVehicles);
 
   const reservableVehicles = vehiclesList.filter(
     (v) => v.estado !== "EN_MANTENIMIENTO"
@@ -132,7 +134,6 @@ export default function ReservationFormModal({ isOpen, onClose, onSubmit }) {
       vehicleName: vehicleName,
       total: estimatedCost,
       id_empleado: currentUser?.id,
-
       fecha_creacion: new Date().toISOString(),
       fecha_confirmacion: null,
       fecha_cancelacion: null,
@@ -247,7 +248,6 @@ export default function ReservationFormModal({ isOpen, onClose, onSubmit }) {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm bg-gray-100 text-gray-600"
             />
 
-            {}
             <div className="md:col-span-2">
               <FormInput
                 label="Costo Estimado"

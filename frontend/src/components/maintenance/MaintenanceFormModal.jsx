@@ -1,6 +1,5 @@
 import { X } from "lucide-react";
 import { useState, useEffect } from "react";
-import mockVehicles from "../../mocks/vehicles.json";
 import { useAuth } from "../../context/AuthContext";
 
 const FormInput = ({ label, id, ...props }) => (
@@ -59,10 +58,9 @@ export default function MaintenanceFormModal({
   onClose,
   onSubmit,
   jobToEdit,
+  vehiclesList = [],
 }) {
   const { currentUser } = useAuth();
-
-  const [vehiclesList] = useState(mockVehicles);
 
   const getInitialState = () => ({
     vehicleId: jobToEdit?.vehicleId || vehiclesList[0]?.id || "",

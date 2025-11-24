@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Sliders, X, CheckCircle, Eye, Download } from "lucide-react";
-import mockInvoices from "../mocks/invoices.json";
-import mockReservations from "../mocks/reservations.json";
+import { invoiceService, leaseService } from "../services";
 
 import SearchBoxWithButton from "../components/ui/SearchBoxWithButton";
 import StyledPrimaryButton from "../components/ui/StyledPrimaryButton";
@@ -27,8 +26,9 @@ const InvoiceStatusBadge = ({ status }) => {
 };
 
 export default function Invoices() {
-  const [invoices, setInvoices] = useState(mockInvoices);
-  const [reservations] = useState(mockReservations);
+  const [invoices, setInvoices] = useState([]);
+  const [reservations, setReservations] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -40,11 +40,32 @@ export default function Invoices() {
   });
   const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false);
 
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [invoicesData, reservationsData] = await Promise.all([
+        invoiceService.getAll(),
+        leaseService.getAll()
+      ]);
+      setInvoices(invoicesData);
+      setReservations(reservationsData);
+    } catch (error) {
+      console.error("Error loading data:", error);
+      alert("Error al cargar datos");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredInvoices = invoices.filter((invoice) => {
     const matchesSearch =
-      invoice.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      invoice.rentalId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      invoice.id.toLowerCase().includes(searchTerm.toLowerCase());
+      invoice.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      invoice.rentalId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      invoice.id?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter ? invoice.status === statusFilter : true;
     return matchesSearch && matchesStatus;
   });
@@ -53,17 +74,21 @@ export default function Invoices() {
     console.log("Ejecutando búsqueda de facturas con:", searchTerm);
   };
 
-  const handleMarkAsPaid = (invoice) => {
+  const handleMarkAsPaid = async (invoice) => {
     if (
       window.confirm(
         `¿Confirmar que la factura ID ${invoice.id} ha sido COBRADA?`
       )
     ) {
-      setInvoices((prev) =>
-        prev.map((inv) =>
-          inv.id === invoice.id ? { ...inv, status: "COBRADA" } : inv
-        )
-      );
+      try {
+        await invoiceService.markAsPaid(invoice.id);
+        alert("Factura marcada como cobrada");
+        await loadData();
+      } catch (error) {
+        console.error("Error marking invoice as paid:", error);
+        const errorMsg = error.response?.data?.detail || "Error al marcar como cobrada";
+        alert(errorMsg);
+      }
     }
   };
 
@@ -77,6 +102,17 @@ export default function Invoices() {
     setIsDetailModalOpen(false);
     setSelectedDetail({ invoice: null, rental: null });
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Cargando facturas...</p>
+        </div>
+      </div>
+    );
+  }
 
   const columns = [
     { header: "Factura / Alquiler", field: "invoiceId" },
@@ -110,7 +146,6 @@ export default function Invoices() {
       </div>
 
       <div className="mt-6 flex gap-6">
-        {}
         {isAdvancedFilterOpen && (
           <div className="w-64 bg-white rounded-xl shadow-lg border border-gray-100 p-5 shrink-0 transition-all duration-300">
             <div className="flex justify-between items-center mb-4 pb-2 border-b">
@@ -143,20 +178,17 @@ export default function Invoices() {
           </div>
         )}
 
-        {}
         <div className="flex-grow">
           <GenericTable
             columns={columns}
             data={filteredInvoices}
             emptyMessage="No se encontraron facturas que coincidan con los filtros."
           >
-            {}
             {(invoice) => (
               <tr
                 key={invoice.id}
                 className="hover:bg-gray-50 transition-colors duration-150"
               >
-                {}
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm font-medium text-gray-900">
                     ID Factura: {invoice.id}
@@ -166,7 +198,6 @@ export default function Invoices() {
                   </div>
                 </td>
 
-                {}
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm font-medium text-gray-900">
                     {invoice.clientName}
@@ -176,26 +207,22 @@ export default function Invoices() {
                   </div>
                 </td>
 
-                {}
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-800">
                     {formatDate(invoice.issueDate)}
                   </div>
                 </td>
 
-                {}
                 <td className="px-6 py-4 whitespace-nowrap text-right">
                   <div className="text-sm font-extrabold text-gray-900">
                     {formatCurrency(invoice.total)}
                   </div>
                 </td>
 
-                {}
                 <td className="px-6 py-4 whitespace-nowrap">
                   <InvoiceStatusBadge status={invoice.status} />
                 </td>
 
-                {}
                 <TableActionCell
                   data={invoice}
                   onView={handleOpenDetailModal}

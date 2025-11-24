@@ -1,6 +1,5 @@
 import { X } from "lucide-react";
 import { useState, useEffect } from "react";
-import mockRentals from "../../mocks/reservations.json";
 import { useAuth } from "../../context/AuthContext";
 
 const FormInput = ({ label, id, ...props }) => (
@@ -59,15 +58,14 @@ export default function IncidentFormModal({
   onClose,
   onSubmit,
   incidentToEdit,
+  rentalsList = [],
 }) {
   const { currentUser } = useAuth();
 
-  const [rentalsList] = useState(
-    mockRentals.filter((r) => r.status !== "CANCELADO")
-  );
+  const activeRentals = rentalsList.filter((r) => r.status !== "CANCELADO");
 
   const getInitialState = () => ({
-    rentalId: incidentToEdit?.rentalId || rentalsList[0]?.id || "",
+    rentalId: incidentToEdit?.rentalId || activeRentals[0]?.id || "",
     type: incidentToEdit?.type || "Daño",
     description: incidentToEdit?.description || "",
     cost: incidentToEdit?.cost || 0,
@@ -93,7 +91,7 @@ export default function IncidentFormModal({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const selectedRental = rentalsList.find((r) => r.id === formData.rentalId);
+    const selectedRental = activeRentals.find((r) => r.id === formData.rentalId);
 
     const dataToSubmit = {
       ...formData,
@@ -141,7 +139,7 @@ export default function IncidentFormModal({
               <option value="" disabled>
                 Seleccione un alquiler
               </option>
-              {rentalsList.map((rental) => (
+              {activeRentals.map((rental) => (
                 <option key={rental.id} value={rental.id}>
                   ID: {rental.id} ({rental.clientName} - {rental.vehicleName})
                 </option>

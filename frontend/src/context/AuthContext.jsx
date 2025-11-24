@@ -1,7 +1,7 @@
 import { createContext, useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
-import mockUsers from "../mocks/users.json";
-import mockEmployees from "../mocks/employees.json";
+import axios from "axios";
+import { API_ENDPOINTS } from "../config/api-config";
 
 const AuthContext = createContext();
 
@@ -22,24 +22,37 @@ export function AuthProvider({ children }) {
 
   const navigate = useNavigate();
 
-  const login = (username, password) => {
-    const user = mockUsers.find((u) => u.username === username);
+  const login = async (username, password) => {
+    try {
+      // Call the backend API
+      const response = await axios.post(API_ENDPOINTS.AUTH.LOGIN, {
+        username,
+        password,
+      });
 
-    if (user) {
-      const employeeData = mockEmployees.find((e) => e.id === user.employeeId);
+      // Extract user data from response
+      const userData = response.data;
 
-      if (employeeData) {
-        window.localStorage.setItem(
-          "car-doba-user",
-          JSON.stringify(employeeData)
-        );
-        setCurrentUser(employeeData);
-        navigate("/");
+      // Store in localStorage
+      window.localStorage.setItem(
+        "car-doba-user",
+        JSON.stringify(userData)
+      );
+      
+      // Update state
+      setCurrentUser(userData);
+      
+      // Navigate to home
+      navigate("/");
+    } catch (error) {
+      console.error("Error en login:", error);
+      
+      // Show appropriate error message
+      if (error.response && error.response.data && error.response.data.detail) {
+        alert(error.response.data.detail);
       } else {
-        alert("Error: Usuario encontrado pero no hay datos de empleado.");
+        alert("Error al conectar con el servidor. Verifica que el backend esté corriendo.");
       }
-    } else {
-      alert("Usuario o contraseña incorrectos.");
     }
   };
 

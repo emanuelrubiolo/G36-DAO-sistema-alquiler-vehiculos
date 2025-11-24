@@ -1,0 +1,34 @@
+# schemas/maintenance_schemas.py
+from typing import Optional
+from decimal import Decimal
+from datetime import datetime
+from pydantic import BaseModel
+
+
+class MaintenanceCreate(BaseModel):
+    vehicleId: int
+    employeeId: int
+    type: str
+    description: str
+    cost: Decimal
+
+
+class MaintenanceResponse(BaseModel):
+    id: int
+    vehicleId: int
+    employeeId: int
+    vehicleName: str
+    startDate: datetime
+    endDate: Optional[datetime] = None
+    type: str
+    description: str
+    cost: Decimal
+
+    class Config:
+        from_attributes = True
+
+
+class MaintenanceUpdate(BaseModel):
+    type: Optional[str] = None
+    description: Optional[str] = None
+    cost: Optional[Decimal] = None

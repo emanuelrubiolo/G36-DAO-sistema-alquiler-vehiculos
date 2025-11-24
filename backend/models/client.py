@@ -1,3 +1,5 @@
+from sqlalchemy.orm import relationship
+
 from backend.data.database import Base
 from sqlalchemy import Integer, String, Column
 
@@ -12,3 +14,4 @@ class Client(Base):
     email = Column(String(255))
     status = Column(String(255))
 
+    leases = relationship("Lease", back_populates="client")

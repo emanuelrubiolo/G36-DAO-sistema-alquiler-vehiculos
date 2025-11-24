@@ -126,11 +126,12 @@ export default function Maintenance() {
   const handleDelete = async (job) => {
     if (
       window.confirm(
-        `¿Estás seguro de que quieres eliminar el registro de ${job.vehicleName}?`
+        `¿Estás seguro de que quieres eliminar el registro de ${job?.name || "este mantenimiento"}?`
+                
       )
     ) {
       try {
-        await maintenanceService.delete(job.id);
+        await maintenanceService.delete(job);
         alert("Mantenimiento eliminado exitosamente");
         await loadData();
       } catch (error) {

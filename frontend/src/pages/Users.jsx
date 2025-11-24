@@ -92,13 +92,14 @@ export default function Users() {
   };
 
   const handleDelete = async (user) => {
+    console.log("Delete function received:", user);
     if (
       window.confirm(
-        `¿Estás seguro de que quieres eliminar el usuario ${user.username}?`
+        `¿Estás seguro de que quieres eliminar a ${user?.name || "este usuario"}?`
       )
     ) {
       try {
-        await userService.delete(user.userId);
+        await userService.delete(user);
         alert("Usuario eliminado exitosamente");
         await loadData();
       } catch (error) {

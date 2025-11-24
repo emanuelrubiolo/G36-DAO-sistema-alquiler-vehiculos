@@ -1,7 +1,6 @@
 import { createContext, useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { API_ENDPOINTS } from "../config/api-config";
 
 const AuthContext = createContext();
 
@@ -25,7 +24,7 @@ export function AuthProvider({ children }) {
   const login = async (username, password) => {
     try {
       // Call the backend API
-      const response = await axios.post(API_ENDPOINTS.AUTH.LOGIN, {
+      const response = await axios.post("http://localhost:8000/auth/login", {
         username,
         password,
       });

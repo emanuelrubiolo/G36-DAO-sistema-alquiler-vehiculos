@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Plus,
   Search,
@@ -9,8 +9,7 @@ import {
   Edit,
   Trash2,
 } from "lucide-react";
-import mockUsers from "../mocks/users.json";
-import mockEmployees from "../mocks/employees.json";
+import { userService } from "../services";
 
 import UserList from "../components/user/UserList";
 import UserFormModal from "../components/user/UserFormModal";
@@ -20,18 +19,35 @@ import GenericTable from "../components/ui/GenericTable";
 import TableActionCell from "../components/ui/TableActionCell";
 
 export default function Users() {
-  const [users, setUsers] = useState(mockUsers);
-  const [employeesList] = useState(mockEmployees);
+  const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(true);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [userToEdit, setUserToEdit] = useState(null);
   const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false);
 
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const data = await userService.getAll();
+      setUsers(data);
+    } catch (error) {
+      console.error("Error loading users:", error);
+      alert("Error al cargar usuarios");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredUsers = users.filter(
     (user) =>
-      user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.employeeName.toLowerCase().includes(searchTerm.toLowerCase())
+      user.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.employeeName?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleSearchExecution = () => {
@@ -53,30 +69,56 @@ export default function Users() {
     setUserToEdit(null);
   };
 
-  const handleFormSubmit = (formData) => {
-    if (userToEdit) {
-      console.log("Actualizando contraseña para:", formData.username);
-    } else {
-      const newUser = {
-        userId: `u${new Date().getTime()}`,
-        employeeId: formData.employeeId,
-        username: formData.username,
-        employeeName: formData.employeeName,
-      };
-      setUsers((prev) => [newUser, ...prev]);
+  const handleFormSubmit = async (formData) => {
+    try {
+      if (userToEdit) {
+        await userService.updatePassword(userToEdit.userId, formData.password);
+        alert("Contraseña actualizada exitosamente");
+      } else {
+        await userService.create({
+          employeeId: formData.employeeId,
+          username: formData.username,
+          password: formData.password,
+        });
+        alert("Usuario creado exitosamente");
+      }
+      await loadData();
+      handleCloseModal();
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      const errorMsg = error.response?.data?.detail || "Error al guardar el usuario";
+      alert(errorMsg);
     }
-    handleCloseModal();
   };
 
-  const handleDelete = (user) => {
+  const handleDelete = async (user) => {
     if (
       window.confirm(
         `¿Estás seguro de que quieres eliminar el usuario ${user.username}?`
       )
     ) {
-      setUsers((prev) => prev.filter((u) => u.userId !== user.userId));
+      try {
+        await userService.delete(user.userId);
+        alert("Usuario eliminado exitosamente");
+        await loadData();
+      } catch (error) {
+        console.error("Error deleting user:", error);
+        const errorMsg = error.response?.data?.detail || "Error al eliminar el usuario";
+        alert(errorMsg);
+      }
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Cargando usuarios...</p>
+        </div>
+      </div>
+    );
+  }
 
   const columns = [
     { header: "Nombre de Usuario", field: "username" },
@@ -85,7 +127,6 @@ export default function Users() {
 
   return (
     <section className="space-y-6">
-      {}
       <header className="flex justify-between items-center pb-2">
         <h1 className="text-3xl font-bold text-gray-900">
           Gestión de Usuarios del Sistema
@@ -96,7 +137,6 @@ export default function Users() {
         </StyledPrimaryButton>
       </header>
 
-      {}
       <div className="flex gap-6">
         <SearchBoxWithButton
           searchTerm={searchTerm}
@@ -109,9 +149,7 @@ export default function Users() {
         />
       </div>
 
-      {}
       <div className="mt-6 flex gap-6">
-        {}
         {isAdvancedFilterOpen && (
           <div className="w-64 bg-white rounded-xl shadow-lg border border-gray-100 p-5 shrink-0 transition-all duration-300">
             <div className="flex justify-between items-center mb-4 pb-2 border-b">
@@ -138,20 +176,17 @@ export default function Users() {
           </div>
         )}
 
-        {}
         <div className="flex-grow">
           <GenericTable
             columns={columns}
             data={filteredUsers}
             emptyMessage="No se encontraron usuarios que coincidan con la búsqueda."
           >
-            {}
             {(user) => (
               <tr
                 key={user.userId}
                 className="hover:bg-gray-50 transition-colors duration-150"
               >
-                {}
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center gap-2">
                     <Key className="w-5 h-5 text-gray-500" />
@@ -161,7 +196,6 @@ export default function Users() {
                   </div>
                 </td>
 
-                {}
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center gap-2">
                     <User className="w-5 h-5 text-gray-500" />
@@ -174,7 +208,6 @@ export default function Users() {
                   </div>
                 </td>
 
-                {}
                 <TableActionCell
                   data={user}
                   onEdit={handleOpenEditModal}
@@ -193,7 +226,6 @@ export default function Users() {
         onClose={handleCloseModal}
         onSubmit={handleFormSubmit}
         userToEdit={userToEdit}
-        employeesList={employeesList}
       />
     </section>
   );

@@ -1,7 +1,6 @@
 import { X, Eye, EyeOff } from "lucide-react";
 import { useState, useEffect } from "react";
-
-import mockEmployees from "../../mocks/employees.json";
+import { employeeService } from "../../services";
 
 const FormInput = ({ label, id, ...props }) => (
   <div>
@@ -43,7 +42,8 @@ export default function UserFormModal({
   onSubmit,
   userToEdit,
 }) {
-  const [employeesList] = useState(mockEmployees);
+  const [employeesList, setEmployeesList] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
 
   const getInitialState = () => ({
@@ -58,8 +58,27 @@ export default function UserFormModal({
   const title = isEditing ? "Modificar Contraseña" : "Crear Nuevo Usuario";
 
   useEffect(() => {
+    if (isOpen) {
+      loadEmployees();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
     setFormData(getInitialState());
-  }, [userToEdit, isOpen]);
+  }, [userToEdit, isOpen, employeesList]);
+
+  const loadEmployees = async () => {
+    try {
+      setLoading(true);
+      const data = await employeeService.getAll();
+      setEmployeesList(data);
+    } catch (error) {
+      console.error("Error loading employees:", error);
+      alert("Error al cargar empleados");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -84,7 +103,6 @@ export default function UserFormModal({
       className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center p-4"
       onClick={onClose}
     >
-      {}
       <div
         className="bg-white w-full max-w-lg rounded-lg shadow-xl z-50 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
@@ -101,71 +119,80 @@ export default function UserFormModal({
 
         <form onSubmit={handleSubmit}>
           <div className="p-6 space-y-4">
-            <FormSelect
-              label="Empleado a Vincular"
-              id="employeeId"
-              name="employeeId"
-              value={formData.employeeId}
-              onChange={handleChange}
-              disabled={isEditing}
-              className={`w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                isEditing ? "bg-gray-100" : ""
-              }`}
-              required
-            >
-              <option value="" disabled>
-                Seleccione un empleado
-              </option>
-              {employeesList.map((emp) => (
-                <option key={emp.id} value={emp.id}>
-                  {emp.name} (Cargo: {emp.cargo})
-                </option>
-              ))}
-            </FormSelect>
+            {loading ? (
+              <div className="text-center py-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="mt-2 text-sm text-gray-600">Cargando empleados...</p>
+              </div>
+            ) : (
+              <>
+                <FormSelect
+                  label="Empleado a Vincular"
+                  id="employeeId"
+                  name="employeeId"
+                  value={formData.employeeId}
+                  onChange={handleChange}
+                  disabled={isEditing}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    isEditing ? "bg-gray-100" : ""
+                  }`}
+                  required
+                >
+                  <option value="" disabled>
+                    Seleccione un empleado
+                  </option>
+                  {employeesList.map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.name} (Cargo: {emp.cargo})
+                    </option>
+                  ))}
+                </FormSelect>
 
-            <FormInput
-              label="Nombre de Usuario"
-              id="username"
-              name="username"
-              type="text"
-              value={formData.username}
-              onChange={handleChange}
-              disabled={isEditing}
-              className={`w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                isEditing ? "bg-gray-100" : ""
-              }`}
-              required
-            />
+                <FormInput
+                  label="Nombre de Usuario"
+                  id="username"
+                  name="username"
+                  type="text"
+                  value={formData.username}
+                  onChange={handleChange}
+                  disabled={isEditing}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    isEditing ? "bg-gray-100" : ""
+                  }`}
+                  required
+                />
 
-            <div className="relative">
-              <FormInput
-                label={isEditing ? "Nueva Contraseña" : "Contraseña"}
-                id="password"
-                name="password"
-                type={showPassword ? "text" : "password"}
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="Dejar en blanco para no cambiar"
-                required={!isEditing}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-9 text-gray-500"
-              >
-                {showPassword ? (
-                  <EyeOff className="w-5 h-5" />
-                ) : (
-                  <Eye className="w-5 h-5" />
-                )}
-              </button>
-            </div>
+                <div className="relative">
+                  <FormInput
+                    label={isEditing ? "Nueva Contraseña" : "Contraseña"}
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={handleChange}
+                    placeholder="Dejar en blanco para no cambiar"
+                    required={!isEditing}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-9 text-gray-500"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-5 h-5" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
 
-            <p className="text-xs text-gray-500">
-              {isEditing
-                ? "Solo se puede modificar la contraseña. Para cambiar el empleado o nombre de usuario, elimine y cree uno nuevo."
-                : "La contraseña será hasheada en el backend."}
-            </p>
+                <p className="text-xs text-gray-500">
+                  {isEditing
+                    ? "Solo se puede modificar la contraseña. Para cambiar el empleado o nombre de usuario, elimine y cree uno nuevo."
+                    : "La contraseña será hasheada en el backend."}
+                </p>
+              </>
+            )}
           </div>
 
           <footer className="flex justify-end gap-3 p-5 bg-gray-50 border-t border-gray-200">
@@ -178,7 +205,8 @@ export default function UserFormModal({
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-sm hover:bg-blue-700"
+              disabled={loading}
+              className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isEditing ? "Actualizar Contraseña" : "Crear Usuario"}
             </button>

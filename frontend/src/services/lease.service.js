@@ -2,8 +2,8 @@ import { apiService } from "./api.service";
 
 export const leaseService = {
   // Get all leases/rentals
-  getAll: async (skip = 0, limit = 100) => {
-    return await apiService.get(`/alquileres?skip=${skip}&limit=${limit}`);
+  getAll: async () => {
+    return await apiService.get(`/alquileres/`);
   },
 
   // Get lease by ID

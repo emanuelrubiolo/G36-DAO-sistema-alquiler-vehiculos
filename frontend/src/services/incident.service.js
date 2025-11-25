@@ -13,7 +13,7 @@ export const incidentService = {
 
   // Create new incident
   create: async (incidentData) => {
-    return await apiService.post("/incidentes", incidentData);
+    return await apiService.post("/incidentes/", incidentData);
   },
 
   // Update incident

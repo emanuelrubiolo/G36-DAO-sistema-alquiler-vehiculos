@@ -16,7 +16,7 @@ class IncidentCreate(BaseModel):
 class IncidentResponse(BaseModel):
     id: int
     rentalId: int
-    employeeId: int
+    employeeId: Optional[int]
     clientName: str
     vehicleName: str
     type: str

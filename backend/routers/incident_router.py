@@ -31,7 +31,7 @@ def read_incidents(
 ):
     """Lista con filtros por: alquiler, empleado, tipo, fecha."""
     query = db.query(Incident)
-
+    
     # Apply filters
     if rentalId:
         query = query.filter(Incident.rentalId == rentalId)
@@ -41,23 +41,24 @@ def read_incidents(
         query = query.filter(Incident.type.ilike(f"%{type}%"))
     if date:
         query = query.filter(Incident.date == date)
-
+    
     incidents = query.offset(skip).limit(limit).all()
-
+    
+    # Convert to response models
     return [
-        {
-            "id": incident.id,
-            "rentalId": incident.rentalId,
-            "employeeId": incident.employeeId,
-            "clientName": incident.clientName,
-            "vehicleName": incident.vehicleName,
-            "type": incident.type,
-            "description": incident.description,
-            "cost": incident.cost,
-            "date": incident.date,
-            "employeeName": incident.employee.name if incident.employee else None,
-            "leaseState": incident.lease.state if incident.lease else None
-        }
+        IncidentResponse(
+            id=incident.id,
+            rentalId=incident.rentalId,
+            employeeId=incident.employeeId,
+            clientName=incident.clientName,
+            vehicleName=incident.vehicleName,
+            type=incident.type,
+            description=incident.description,
+            cost=incident.cost,
+            date=incident.date,
+            employeeName=incident.employee.name if incident.employee else None,
+            leaseState=incident.lease.state if incident.lease else None
+        )
         for incident in incidents
     ]
 

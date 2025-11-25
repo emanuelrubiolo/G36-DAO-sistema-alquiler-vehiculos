@@ -365,3 +365,21 @@ def finalize_lease(id_alquiler: int, data: LeaseFinalize, db: Session = Depends(
         "start_kilometers": db_lease.start_kilometers,
         "end_kilometers": db_lease.end_kilometers,
     }
+
+@router.delete("/{id_alquiler}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_lease(id_alquiler: int, db: Session = Depends(get_db)):
+    """Elimina un alquiler si está en estado 'creado'."""
+    db_lease = db.query(Lease).filter(Lease.id == id_alquiler).first()
+    if not db_lease:
+        raise HTTPException(status_code=404, detail="Lease not found")
+
+    if db_lease.state != "creado":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot delete lease in state '{db_lease.state}'. Only 'creado' leases can be deleted."
+        )
+
+    db.delete(db_lease)
+    db.commit()
+
+    return

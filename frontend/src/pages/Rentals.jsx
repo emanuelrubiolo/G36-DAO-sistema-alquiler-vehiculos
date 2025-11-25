@@ -151,11 +151,11 @@ export default function Rentals() {
   const handleDelete = async (rental) => {
     if (
       window.confirm(
-        `¿Estás seguro de que quieres CANCELAR el alquiler ID ${rental.id}?`
+        `¿Estás seguro de que quieres CANCELAR el alquiler ID ${rental}?`
       )
     ) {
       try {
-        await leaseService.delete(rental.id);
+        await leaseService.delete(rental);
         alert("Alquiler cancelado exitosamente");
         await loadData();
       } catch (error) {

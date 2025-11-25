@@ -95,9 +95,9 @@ def create_incident(incident: IncidentCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Lease not found")
 
     # Validate employee exists
-    employee = db.query(Employee).filter(Employee.id == incident.employeeId).first()
-    if not employee:
-        raise HTTPException(status_code=404, detail="Employee not found")
+    #employee = db.query(Employee).filter(Employee.id == lease.employeeId).first()
+    #if not employee:
+    #    raise HTTPException(status_code=404, detail="Employee not found")
 
     # Get client and vehicle names from lease
     client_name = lease.client.name if lease.client else "Unknown"
@@ -109,7 +109,7 @@ def create_incident(incident: IncidentCreate, db: Session = Depends(get_db)):
     # Create incident
     db_incident = Incident(
         rentalId=incident.rentalId,
-        employeeId=incident.employeeId,
+    #   employeeId=employee.id,
         clientName=client_name,
         vehicleName=vehicle_name,
         type=incident.type,

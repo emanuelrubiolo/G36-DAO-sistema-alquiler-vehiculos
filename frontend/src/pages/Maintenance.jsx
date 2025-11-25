@@ -4,7 +4,7 @@ import { useLocation } from "react-router-dom";
 import { maintenanceService, vehicleService } from "../services";
 
 import MaintenanceFormModal from "../components/maintenance/MaintenanceFormModal";
-import MaintenanceList from "../components/maintenance/MaintenanceList"; // Importamos el componente correcto
+import MaintenanceList from "../components/maintenance/MaintenanceList";
 
 import SearchBoxWithButton from "../components/ui/SearchBoxWithButton";
 import StyledPrimaryButton from "../components/ui/StyledPrimaryButton";
@@ -23,6 +23,11 @@ export default function Maintenance() {
   const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false);
 
   const [dashboardFilterMessage, setDashboardFilterMessage] = useState(null);
+
+  // Nuevos estados para los filtros avanzados
+  const [statusFilter, setStatusFilter] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   useEffect(() => {
     loadData();
@@ -68,11 +73,34 @@ export default function Maintenance() {
 
   const jobsSource = dashboardFilterMessage ? maintenanceJobs : allJobs;
 
-  const filteredJobs = jobsSource.filter(
-    (job) =>
+  // Lógica de filtrado combinada
+  const filteredJobs = jobsSource.filter((job) => {
+    // 1. Búsqueda por texto (Vehículo o Descripción)
+    const matchesSearch =
       job.vehicleName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      job.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+      job.description?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    // 2. Filtro por Estado
+    const matchesStatus = statusFilter
+      ? job.status?.toLowerCase() === statusFilter.toLowerCase()
+      : true;
+
+    // 3. Filtro por Fecha (Rango sobre startDate)
+    let matchesDate = true;
+    if (dateFrom || dateTo) {
+      const jobDate = new Date(job.startDate); // Asumimos formato ISO o válido
+      const startFilter = dateFrom ? new Date(dateFrom) : null;
+      const endFilter = dateTo ? new Date(dateTo) : null;
+
+      // Ajuste para incluir el día final completo si se selecciona fecha
+      if (endFilter) endFilter.setHours(23, 59, 59, 999);
+
+      if (startFilter && jobDate < startFilter) matchesDate = false;
+      if (endFilter && jobDate > endFilter) matchesDate = false;
+    }
+
+    return matchesSearch && matchesStatus && matchesDate;
+  });
 
   const handleSearchExecution = () => {
     console.log("Ejecutando búsqueda de mantenimiento con:", searchTerm);
@@ -94,9 +122,6 @@ export default function Maintenance() {
   const handleFormSubmit = async (formData) => {
     try {
       if (jobToEdit) {
-        // Si el usuario marcó como finalizado en el form, el form ya lo envía en el payload
-        // pero aquí usamos el update genérico o finish según corresponda.
-        // Para simplificar, usamos update ya que el modal maneja la lógica de campos.
         await maintenanceService.update(jobToEdit.id, formData);
         alert("Mantenimiento actualizado exitosamente");
       } else {
@@ -134,6 +159,12 @@ export default function Maintenance() {
     await loadData();
     setDashboardFilterMessage(null);
     setSearchTerm("");
+  };
+
+  const clearAdvancedFilters = () => {
+    setStatusFilter("");
+    setDateFrom("");
+    setDateTo("");
   };
 
   if (loading) {
@@ -186,9 +217,11 @@ export default function Maintenance() {
         />
       </div>
 
-      <div className="mt-6 flex gap-6">
+      {/* Contenedor Principal: Filtros + Tabla */}
+      <div className="flex flex-col gap-6">
+        {/* Panel de Filtros Avanzados */}
         {isAdvancedFilterOpen && (
-          <div className="w-64 bg-white rounded-xl shadow-lg border border-gray-100 p-5 shrink-0 transition-all duration-300">
+          <div className="w-full bg-white rounded-xl shadow-lg border border-gray-100 p-5 transition-all duration-300">
             <div className="flex justify-between items-center mb-4 pb-2 border-b">
               <h3 className="font-bold text-lg flex items-center gap-2">
                 <Sliders className="w-5 h-5 text-gray-600" />
@@ -202,16 +235,59 @@ export default function Maintenance() {
               </button>
             </div>
 
-            <div className="space-y-4">
-              <div className="font-semibold text-gray-700">Estado:</div>
-              <div className="h-16 bg-gray-100 rounded flex items-center justify-center text-sm text-gray-500">
-                (Dropdown de Estado Mock)
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-gray-700">
+                  Estado
+                </label>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Todos</option>
+                  <option value="iniciado">Iniciado</option>
+                  <option value="finalizado">Finalizado</option>
+                </select>
               </div>
+
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-gray-700">
+                  Fecha Desde
+                </label>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-gray-700">
+                  Fecha Hasta
+                </label>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={clearAdvancedFilters}
+                className="text-sm text-red-600 hover:text-red-800 font-medium flex items-center gap-1"
+              >
+                <X className="w-4 h-4" /> Limpiar Filtros
+              </button>
             </div>
           </div>
         )}
 
-        {/* Reemplazo de GenericTable por MaintenanceList */}
+        {/* Lista de Mantenimientos */}
         <div className="flex-grow">
           <MaintenanceList
             maintenanceJobs={filteredJobs}

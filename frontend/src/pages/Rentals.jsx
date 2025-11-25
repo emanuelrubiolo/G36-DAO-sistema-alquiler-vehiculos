@@ -27,12 +27,16 @@ const StatusBadge = ({ status }) => {
   const statusMap = {
     RESERVADO: { text: "Reservado", color: "bg-indigo-100 text-indigo-800" },
     ALQUILADO: { text: "Alquilado", color: "bg-yellow-100 text-yellow-800" },
-    CONFIRMADO: { text: "Confirmado", color: "bg-blue-100 text-blue-800" }, // Estado principal activo
+    CONFIRMADO: { text: "Confirmado", color: "bg-blue-100 text-blue-800" },
     INICIADO: { text: "En Curso", color: "bg-purple-100 text-purple-800" },
     FINALIZADO: { text: "Finalizado", color: "bg-green-100 text-green-800" },
     CANCELADO: { text: "Cancelado", color: "bg-red-100 text-red-800" },
   };
-  const { text, color } = statusMap[status] || {
+
+  // Normalizamos a mayúsculas para el mapeo visual
+  const normalizedStatus = status ? status.toUpperCase() : "DESCONOCIDO";
+
+  const { text, color } = statusMap[normalizedStatus] || {
     text: status,
     color: "bg-gray-100 text-gray-800",
   };
@@ -47,6 +51,8 @@ const StatusBadge = ({ status }) => {
 
 export default function Rentals() {
   const [searchTerm, setSearchTerm] = useState("");
+  // Estado para el filtro de estado
+  const [statusFilter, setStatusFilter] = useState("");
 
   // Estados de datos
   const [rentals, setRentals] = useState([]);
@@ -96,14 +102,14 @@ export default function Rentals() {
           startDate: lease.date_time_start,
           endDate: lease.date_time_end,
           total: parseFloat(lease.amount || 0),
-          status: status,
+          status: status, // Mantenemos mayúsculas para lógica interna si se prefiere, o raw state
+          // Para filtrado usaremos toLowerCase()
           kilometraje_inicio: lease.start_kilometers,
           fecha_confirmacion: lease.date_confirm,
           fecha_creacion: lease.date_create,
         };
       });
 
-      // Filtramos RESERVADO ya que CONFIRMADO es el estado activo válido que queremos ver
       const activeRentals = formattedLeases.filter(
         (r) => r.status !== "RESERVADO"
       );
@@ -124,12 +130,19 @@ export default function Rentals() {
     const vehiclePatente =
       vehicles.find((v) => v.id === res.vehicleId)?.patente || "";
 
-    return (
+    // 1. Filtro por texto
+    const matchesSearch =
       res.clientName?.toLowerCase().includes(term) ||
       res.vehicleName?.toLowerCase().includes(term) ||
       res.id?.toString().toLowerCase().includes(term) ||
-      vehiclePatente.toLowerCase().includes(term)
-    );
+      vehiclePatente.toLowerCase().includes(term);
+
+    // 2. Filtro por estado (insensible a mayúsculas/minúsculas)
+    const matchesStatus = statusFilter
+      ? res.status?.toLowerCase() === statusFilter.toLowerCase()
+      : true;
+
+    return matchesSearch && matchesStatus;
   });
 
   const handleSearchExecution = () => {
@@ -156,7 +169,7 @@ export default function Rentals() {
       if (!rentalToEdit) {
         await leaseService.create({
           ...formData,
-          status: "confirmado", // Enviar como confirmado (primer estado válido)
+          status: "confirmado",
           fecha_confirmacion: new Date().toISOString(),
         });
         alert("Alquiler creado exitosamente");
@@ -205,18 +218,13 @@ export default function Rentals() {
         end_kilometers: endKm,
       });
 
-      // 1. Llamada para finalizar el alquiler (PATCH)
-      // Asumimos que la respuesta contiene el alquiler actualizado con el monto final calculado
       const response = await leaseService.finish(data.rentalId, {
         end_kilometers: endKm,
       });
 
-      // Extraemos los datos del alquiler finalizado
       const finishedRental = response?.data || response;
 
-      // 2. Llamada para crear la factura (POST)
       if (finishedRental) {
-        // SCHEMAS CUMPLIDO: rentalId (int), paymentMethod (string)
         const invoiceData = {
           rentalId: parseInt(finishedRental.id, 10),
           paymentMethod: data.metodo_pago || "Efectivo",
@@ -227,7 +235,7 @@ export default function Rentals() {
         alert("Alquiler finalizado y factura generada exitosamente.");
       } else {
         alert(
-          "Alquiler finalizado, pero no se pudo generar la factura automáticamente (sin datos de respuesta)."
+          "Alquiler finalizado, pero no se pudo generar la factura automáticamente."
         );
       }
 
@@ -236,8 +244,7 @@ export default function Rentals() {
       setRentalToFinish(null);
     } catch (error) {
       console.error("Error en proceso de finalización/facturación:", error);
-
-      let errorMsg = "Error al finalizar el alquiler o generar la factura.";
+      let errorMsg = "Error al finalizar el alquiler.";
       const errorDetail = error.response?.data?.detail;
 
       if (Array.isArray(errorDetail)) {
@@ -247,7 +254,6 @@ export default function Rentals() {
       } else if (typeof errorDetail === "string") {
         errorMsg = errorDetail;
       }
-
       alert(`Error del servidor:\n${errorMsg}`);
     }
   };
@@ -329,9 +335,17 @@ export default function Rentals() {
 
             <div className="space-y-4">
               <div className="font-semibold text-gray-700">Estado:</div>
-              <div className="h-24 bg-gray-100 rounded flex items-center justify-center text-sm text-gray-500">
-                (Checkboxes de Estado)
-              </div>
+              {/* Selector funcional de Estado */}
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Todos</option>
+                <option value="confirmado">Confirmado</option>
+                <option value="finalizado">Finalizado</option>
+                <option value="cancelado">Cancelado</option>
+              </select>
             </div>
           </div>
         )}

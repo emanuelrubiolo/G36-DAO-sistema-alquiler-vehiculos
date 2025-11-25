@@ -1,9 +1,8 @@
-import { apiService } from "./api.service";
+import apiService from "./api.service";
 
 export const dashboardService = {
   getData: async () => {
     try {
-      // Consumir el endpoint real del backend
       const response = await apiService.get("/dashboard");
       const data = response?.data || response;
 
@@ -11,30 +10,68 @@ export const dashboardService = {
         throw new Error("No se recibieron datos del dashboard");
       }
 
-      // --- ADAPTADOR DE DATOS (Backend -> Frontend) ---
-      // Transformamos la respuesta para que coincida con lo que esperan los componentes visuales
+      const months = [
+        "Ene",
+        "Feb",
+        "Mar",
+        "Abr",
+        "May",
+        "Jun",
+        "Jul",
+        "Ago",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dic",
+      ];
 
-      // 1. Mapeo para PopularVehiclesChart (espera 'value' en lugar de 'rentals')
-      const popularVehicles = (data.popularVehicles || []).map((item) => ({
-        name: item.name,
-        value: item.rentals, // Mapeo clave: rentals -> value
+      // 1. Calcular conteo de alquileres por mes usando detailedRentals
+      const rentalsCountByMonth = {};
+      months.forEach((m) => (rentalsCountByMonth[m] = 0));
+
+      (data.detailedRentals || []).forEach((rental) => {
+        const dateStr = rental.startDate || rental.date_time_start;
+        if (dateStr) {
+          // Manejo robusto de fechas (acepta "2025-11-25" y formatos ISO)
+          const date = new Date(dateStr);
+          // Ajuste de zona horaria simple para evitar saltos de mes por UTC
+          const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+          const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
+
+          if (!isNaN(adjustedDate)) {
+            const monthIndex = adjustedDate.getMonth(); // 0-11
+            const monthName = months[monthIndex];
+            rentalsCountByMonth[monthName] =
+              (rentalsCountByMonth[monthName] || 0) + 1;
+          }
+        }
+      });
+
+      // 2. Fusionar Ingresos (del backend) con Conteos (calculados)
+      const monthlyRevenue = (data.monthlyRevenue || []).map((item) => ({
+        ...item,
+        // Aseguramos que exista 'count', tomándolo del cálculo anterior si coincide el mes
+        count: rentalsCountByMonth[item.month] || 0,
       }));
 
-      // 2. Mapeo para ReportsTable (espera 'id', 'vehicle', etc.)
+      // 3. Mapeo para PopularVehiclesChart
+      const popularVehicles = (data.popularVehicles || []).map((item) => ({
+        name: item.name,
+        value: item.rentals,
+      }));
+
+      // 4. Mapeo para ReportsTable
       const detailedRentals = (data.detailedRentals || []).map((item) => ({
-        id: item.rentalId, // Mapeo clave: rentalId -> id
+        id: item.rentalId,
         clientName: item.clientName,
-        vehicle: item.vehicleName, // Mapeo clave: vehicleName -> vehicle
+        vehicle: item.vehicleName,
         startDate: item.startDate,
         endDate: item.endDate,
         total: parseFloat(item.total || 0),
-        // Si el backend no envía estos estados en el resumen, ponemos defaults
-        // para que la tabla no se vea rota.
         status: "Finalizado",
         invoiceStatus: "Emitida",
       }));
 
-      // 3. Retornar estructura final
       return {
         kpis: data.kpis || {
           totalRevenue: 0,
@@ -42,13 +79,12 @@ export const dashboardService = {
           activeClients: 0,
           availableVehicles: 0,
         },
-        monthlyRevenue: data.monthlyRevenue || [],
+        monthlyRevenue, // Ahora incluye 'total' y 'count'
         popularVehicles,
         detailedRentals,
       };
     } catch (error) {
       console.error("Error obteniendo datos del dashboard:", error);
-      // Retornar estructura vacía para evitar pantalla blanca en caso de error
       return {
         kpis: {
           totalRevenue: 0,

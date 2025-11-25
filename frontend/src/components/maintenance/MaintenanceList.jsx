@@ -1,13 +1,19 @@
 import StyledActionButton from "../ui/StyledActionButton";
-import { Trash2, Eye, CheckCircle } from "lucide-react";
+import { Edit, Trash2, Eye, CheckCircle } from "lucide-react";
 
+// CORRECCIÓN: formatDate simplificado para aceptar fechas ISO del backend
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
-  const date = new Date(dateString + "T00:00:00");
+  const date = new Date(dateString);
+
+  // Validar que la fecha sea válida
+  if (isNaN(date.getTime())) return "N/A";
+
   const options = { year: "numeric", month: "2-digit", day: "2-digit" };
   return date.toLocaleDateString("es-AR", options);
 };
 
+// Helper robusto para moneda
 const formatCurrency = (amount) => {
   const num = parseFloat(amount);
   if (!isNaN(num)) {
@@ -66,19 +72,34 @@ export default function MaintenanceList({
         <table className="w-full min-w-max divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
+              >
                 Vehículo / Descripción
               </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
+              >
                 Período
               </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
+              >
                 Tipo
               </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
+              >
                 Estado
               </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
+              >
                 Costo
               </th>
               <th scope="col" className="relative px-6 py-3 text-right">
@@ -125,7 +146,6 @@ export default function MaintenanceList({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex justify-end items-center gap-1">
-                      {/* Lógica de Botones: Check si está activo, Ojo si está finalizado */}
                       {!isFinalized ? (
                         <StyledActionButton
                           onClick={() => onFinish(job)}

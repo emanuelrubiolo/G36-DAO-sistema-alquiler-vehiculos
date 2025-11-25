@@ -45,35 +45,44 @@ export default function VehicleFormModal({
     brand: vehicleToEdit?.brand || "",
     model: vehicleToEdit?.model || "",
     patente: vehicleToEdit?.patente || "",
-    year: vehicleToEdit?.year || 2024,
-    pricePerDay: vehicleToEdit?.pricePerDay || 0,
+    year: vehicleToEdit?.year || new Date().getFullYear(),
+    pricePerDay: vehicleToEdit?.pricePerDay || "",
+    thumbnail: vehicleToEdit?.thumbnail || "",
+    seats: vehicleToEdit?.seats || 5,
     transmission: vehicleToEdit?.transmission || "Manual",
     fuel: vehicleToEdit?.fuel || "Nafta",
-    thumbnail: vehicleToEdit?.thumbnail || "",
     kilometraje_actual: vehicleToEdit?.kilometraje_actual || 0,
-    estado: vehicleToEdit?.estado || "DISPONIBLE",
+    // El estado "disponible" se asigna automáticamente en el backend al crear,
+    // o podemos enviarlo explícitamente si es necesario.
   });
 
   const [formData, setFormData] = useState(getInitialState());
 
-  const isEditing = !!vehicleToEdit;
-  const title = isEditing ? "Editar Vehículo" : "Agregar Nuevo Vehículo";
-
   useEffect(() => {
-    setFormData(getInitialState());
-  }, [vehicleToEdit, isOpen]);
+    if (isOpen) {
+      setFormData(getInitialState());
+    }
+  }, [isOpen, vehicleToEdit]);
 
   const handleChange = (e) => {
-    const { name, value, type } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "number" ? parseFloat(value) || 0 : value,
-    }));
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(formData);
+
+    // Convertir tipos de datos según el Schema
+    const dataToSubmit = {
+      ...formData,
+      year: parseInt(formData.year, 10),
+      pricePerDay: parseFloat(formData.pricePerDay),
+      seats: parseInt(formData.seats, 10),
+      kilometraje_actual: parseInt(formData.kilometraje_actual, 10),
+      thumbnail: formData.thumbnail.trim() === "" ? null : formData.thumbnail,
+    };
+
+    onSubmit(dataToSubmit);
   };
 
   if (!isOpen) return null;
@@ -88,7 +97,9 @@ export default function VehicleFormModal({
         onClick={(e) => e.stopPropagation()}
       >
         <header className="flex justify-between items-center p-5 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900">{title}</h2>
+          <h2 className="text-xl font-bold text-gray-900">
+            {vehicleToEdit ? "Editar Vehículo" : "Registrar Nuevo Vehículo"}
+          </h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"
@@ -103,31 +114,32 @@ export default function VehicleFormModal({
               label="Marca"
               id="brand"
               name="brand"
-              type="text"
               value={formData.brand}
               onChange={handleChange}
               required
+              placeholder="Ej: Toyota"
             />
+
             <FormInput
               label="Modelo"
               id="model"
               name="model"
-              type="text"
               value={formData.model}
               onChange={handleChange}
               required
+              placeholder="Ej: Corolla"
             />
 
             <FormInput
               label="Patente"
               id="patente"
               name="patente"
-              type="text"
               value={formData.patente}
               onChange={handleChange}
-              placeholder="Ej: AA 123 BB"
               required
+              placeholder="Ej: AA123BB"
             />
+
             <FormInput
               label="Año"
               id="year"
@@ -139,7 +151,7 @@ export default function VehicleFormModal({
             />
 
             <FormInput
-              label="Precio por Día"
+              label="Precio por Día ($)"
               id="pricePerDay"
               name="pricePerDay"
               type="number"
@@ -148,6 +160,17 @@ export default function VehicleFormModal({
               onChange={handleChange}
               required
             />
+
+            <FormInput
+              label="Kilometraje Actual"
+              id="kilometraje_actual"
+              name="kilometraje_actual"
+              type="number"
+              value={formData.kilometraje_actual}
+              onChange={handleChange}
+              required
+            />
+
             <FormSelect
               label="Transmisión"
               id="transmission"
@@ -156,8 +179,9 @@ export default function VehicleFormModal({
               onChange={handleChange}
             >
               <option value="Manual">Manual</option>
-              <option value="Automático">Automático</option>
+              <option value="Automatica">Automática</option>
             </FormSelect>
+
             <FormSelect
               label="Combustible"
               id="fuel"
@@ -166,37 +190,30 @@ export default function VehicleFormModal({
               onChange={handleChange}
             >
               <option value="Nafta">Nafta</option>
-              <option value="Diésel">Diésel</option>
-              <option value="Eléctrico">Eléctrico</option>
+              <option value="Diesel">Diesel</option>
+              <option value="GNC">GNC</option>
+              <option value="Hibrido">Híbrido</option>
+              <option value="Electrico">Eléctrico</option>
             </FormSelect>
+
             <FormInput
-              label="Kilometraje Actual"
-              id="kilometraje_actual"
-              name="kilometraje_actual"
+              label="Cantidad de Asientos"
+              id="seats"
+              name="seats"
               type="number"
-              value={formData.kilometraje_actual}
+              value={formData.seats}
               onChange={handleChange}
+              required
             />
-            <FormSelect
-              label="Estado"
-              id="estado"
-              name="estado"
-              value={formData.estado}
-              onChange={handleChange}
-            >
-              <option value="DISPONIBLE">Disponible</option>
-              <option value="NO_DISPONIBLE">No Disponible (Alquilado)</option>
-              <option value="EN_MANTENIMIENTO">En Mantenimiento</option>
-            </FormSelect>
 
             <div className="md:col-span-2">
               <FormInput
-                label="URL de Imagen (thumbnail)"
+                label="URL de Imagen (Thumbnail)"
                 id="thumbnail"
                 name="thumbnail"
-                type="text"
                 value={formData.thumbnail}
                 onChange={handleChange}
+                placeholder="https://ejemplo.com/imagen.jpg"
               />
             </div>
           </div>
@@ -213,7 +230,7 @@ export default function VehicleFormModal({
               type="submit"
               className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-sm hover:bg-blue-700"
             >
-              {isEditing ? "Guardar Cambios" : "Crear Vehículo"}
+              {vehicleToEdit ? "Guardar Cambios" : "Crear Vehículo"}
             </button>
           </footer>
         </form>

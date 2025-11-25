@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-
-import { Search, LayoutGrid, List, Sliders, X } from "lucide-react";
+import { Search, LayoutGrid, List, Sliders, X, Plus } from "lucide-react"; // Agregado Plus
 import { vehicleService } from "../services";
 import VehicleList from "../components/vehicle/VehicleList";
+import VehicleFormModal from "../components/vehicle/VehicleFormModal"; // Importar el Modal
 import SearchBoxWithButton from "../components/ui/SearchBoxWithButton";
+import StyledPrimaryButton from "../components/ui/StyledPrimaryButton"; // Importar botón primario
 
 const getToggleClasses = (currentView, buttonView) => {
   return `p-2 rounded-lg transition-all duration-200 ${
@@ -21,6 +22,10 @@ export default function Vehicles() {
   const [view, setView] = useState("grid");
   const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false);
 
+  // Estados para el modal
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [vehicleToEdit, setVehicleToEdit] = useState(null);
+
   useEffect(() => {
     loadData();
   }, []);
@@ -29,10 +34,17 @@ export default function Vehicles() {
     try {
       setLoading(true);
       const data = await vehicleService.getAll();
-      setVehicles(data);
+
+      // Filtramos para excluir los que tienen estado "baja"
+      const activeVehicles = Array.isArray(data)
+        ? data.filter((v) => v.estado?.toLowerCase() !== "baja")
+        : [];
+
+      setVehicles(activeVehicles);
     } catch (error) {
       console.error("Error loading vehicles:", error);
       alert("Error al cargar vehículos");
+      setVehicles([]);
     } finally {
       setLoading(false);
     }
@@ -51,6 +63,38 @@ export default function Vehicles() {
     console.log("Ejecutando búsqueda profunda con:", searchTerm);
   };
 
+  // Manejadores del Modal
+  const handleOpenCreateModal = () => {
+    setVehicleToEdit(null);
+    setIsFormModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsFormModalOpen(false);
+    setVehicleToEdit(null);
+  };
+
+  const handleFormSubmit = async (formData) => {
+    try {
+      if (vehicleToEdit) {
+        // Lógica de edición (si fuera necesaria en el futuro)
+        await vehicleService.update(vehicleToEdit.id, formData);
+        alert("Vehículo actualizado exitosamente");
+      } else {
+        // Lógica de creación
+        await vehicleService.create(formData);
+        alert("Vehículo creado exitosamente");
+      }
+      await loadData();
+      handleCloseModal();
+    } catch (error) {
+      console.error("Error saving vehicle:", error);
+      const errorMsg =
+        error.response?.data?.detail || "Error al guardar el vehículo";
+      alert(errorMsg);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -66,8 +110,13 @@ export default function Vehicles() {
     <section className="space-y-6">
       <header className="flex justify-between items-center pb-2">
         <h1 className="text-3xl font-bold text-gray-900">
-          Gestion de vehiculos
+          Gestión de Vehículos
         </h1>
+        {/* Botón Agregar Vehículo */}
+        <StyledPrimaryButton onClick={handleOpenCreateModal}>
+          <Plus className="w-5 h-5" />
+          <span>Nuevo Vehículo</span>
+        </StyledPrimaryButton>
       </header>
 
       <div className="flex gap-6">
@@ -120,6 +169,14 @@ export default function Vehicles() {
           <VehicleList vehicles={filteredVehicles} view={view} />
         </div>
       </div>
+
+      {/* Modal de Formulario */}
+      <VehicleFormModal
+        isOpen={isFormModalOpen}
+        onClose={handleCloseModal}
+        onSubmit={handleFormSubmit}
+        vehicleToEdit={vehicleToEdit}
+      />
     </section>
   );
 }

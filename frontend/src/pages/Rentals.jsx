@@ -200,23 +200,44 @@ export default function Rentals() {
         return;
       }
 
-      console.log("Enviando finalización:", {
+      console.log("Finalizando alquiler...", {
         id: data.rentalId,
         end_kilometers: endKm,
       });
 
-      await leaseService.finish(data.rentalId, {
+      // 1. Llamada para finalizar el alquiler (PATCH)
+      // Asumimos que la respuesta contiene el alquiler actualizado con el monto final calculado
+      const response = await leaseService.finish(data.rentalId, {
         end_kilometers: endKm,
       });
 
-      alert("Alquiler finalizado exitosamente");
+      // Extraemos los datos del alquiler finalizado
+      const finishedRental = response?.data || response;
+
+      // 2. Llamada para crear la factura (POST)
+      if (finishedRental) {
+        // SCHEMAS CUMPLIDO: rentalId (int), paymentMethod (string)
+        const invoiceData = {
+          rentalId: parseInt(finishedRental.id, 10),
+          paymentMethod: data.metodo_pago || "Efectivo",
+        };
+
+        console.log("Creando factura automática:", invoiceData);
+        await invoiceService.create(invoiceData);
+        alert("Alquiler finalizado y factura generada exitosamente.");
+      } else {
+        alert(
+          "Alquiler finalizado, pero no se pudo generar la factura automáticamente (sin datos de respuesta)."
+        );
+      }
+
       await loadData();
       setIsFinishModalOpen(false);
       setRentalToFinish(null);
     } catch (error) {
-      console.error("Error finishing rental:", error);
+      console.error("Error en proceso de finalización/facturación:", error);
 
-      let errorMsg = "Error al finalizar el alquiler";
+      let errorMsg = "Error al finalizar el alquiler o generar la factura.";
       const errorDetail = error.response?.data?.detail;
 
       if (Array.isArray(errorDetail)) {

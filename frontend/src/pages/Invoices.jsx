@@ -1,14 +1,13 @@
 import { useState, useEffect } from "react";
-import { Search, Sliders, X, CheckCircle, Eye, Download } from "lucide-react";
+import { Plus, Search, Sliders, X, CheckCircle, Eye, Download, Edit, Trash2 } from "lucide-react";
 import { invoiceService, leaseService } from "../services";
 
 import SearchBoxWithButton from "../components/ui/SearchBoxWithButton";
 import StyledPrimaryButton from "../components/ui/StyledPrimaryButton";
-
 import GenericTable from "../components/ui/GenericTable";
-
 import TableActionCell from "../components/ui/TableActionCell";
 import InvoiceDetailModal from "../components/invoice/InvoiceDetailModal";
+import InvoiceFormModal from "../components/invoice/InvoiceFormModal";
 
 import { formatCurrency, formatDate } from "../utils/formatters";
 
@@ -24,7 +23,7 @@ const InvoiceStatusBadge = ({ status }) => {
     </span>
   );
 };
-//todo: add create button
+
 export default function Invoices() {
   const [invoices, setInvoices] = useState([]);
   const [reservations, setReservations] = useState([]);
@@ -39,6 +38,9 @@ export default function Invoices() {
     rental: null,
   });
   const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false);
+
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [invoiceToEdit, setInvoiceToEdit] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -74,6 +76,39 @@ export default function Invoices() {
     console.log("Ejecutando búsqueda de facturas con:", searchTerm);
   };
 
+  const handleOpenCreateModal = () => {
+    setInvoiceToEdit(null);
+    setIsFormModalOpen(true);
+  };
+
+  const handleOpenEditModal = (invoice) => {
+    setInvoiceToEdit(invoice);
+    setIsFormModalOpen(true);
+  };
+
+  const handleCloseFormModal = () => {
+    setIsFormModalOpen(false);
+    setInvoiceToEdit(null);
+  };
+
+  const handleFormSubmit = async (formData) => {
+    try {
+      if (invoiceToEdit) {
+        await invoiceService.update(invoiceToEdit.id, formData);
+        alert("Factura actualizada exitosamente");
+      } else {
+        await invoiceService.create(formData);
+        alert("Factura creada exitosamente");
+      }
+      await loadData();
+      handleCloseFormModal();
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      const errorMsg = error.response?.data?.detail || "Error al guardar la factura";
+      alert(errorMsg);
+    }
+  };
+
   const handleMarkAsPaid = async (invoice) => {
     if (
       window.confirm(
@@ -87,6 +122,22 @@ export default function Invoices() {
       } catch (error) {
         console.error("Error marking invoice as paid:", error);
         const errorMsg = error.response?.data?.detail || "Error al marcar como cobrada";
+        alert(errorMsg);
+      }
+    }
+  };
+
+  const handleDelete = async (invoiceId) => {
+    if (
+      window.confirm("¿Estás seguro de que quieres eliminar esta factura?")
+    ) {
+      try {
+        await invoiceService.delete(invoiceId);
+        alert("Factura eliminada exitosamente");
+        await loadData();
+      } catch (error) {
+        console.error("Error deleting invoice:", error);
+        const errorMsg = error.response?.data?.detail || "Error al eliminar la factura";
         alert(errorMsg);
       }
     }
@@ -128,10 +179,19 @@ export default function Invoices() {
         <h1 className="text-3xl font-bold text-gray-900">
           Gestión de Facturación
         </h1>
-        <StyledPrimaryButton className="bg-green-600 hover:bg-green-700">
-          <Download className="w-5 h-5" />
-          <span>Exportar Datos</span>
-        </StyledPrimaryButton>
+        <div className="flex gap-3">
+          <StyledPrimaryButton 
+            onClick={handleOpenCreateModal}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            <Plus className="w-5 h-5" />
+            <span>Nueva Factura</span>
+          </StyledPrimaryButton>
+          <StyledPrimaryButton className="bg-green-600 hover:bg-green-700">
+            <Download className="w-5 h-5" />
+            <span>Exportar Datos</span>
+          </StyledPrimaryButton>
+        </div>
       </header>
 
       <div className="flex gap-6">
@@ -223,16 +283,45 @@ export default function Invoices() {
                   <InvoiceStatusBadge status={invoice.status} />
                 </td>
 
-                <TableActionCell
-                  data={invoice}
-                  onView={handleOpenDetailModal}
-                  onAction={
-                    invoice.status === "NO COBRADA" ? handleMarkAsPaid : null
-                  }
-                  additionalActionIcon={CheckCircle}
-                  additionalActionTitle="Marcar como Cobrada"
-                  hideDelete={true}
-                />
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => handleOpenDetailModal(invoice)}
+                      className="text-blue-600 hover:text-blue-800"
+                      title="Ver detalles"
+                    >
+                      <Eye className="w-5 h-5" />
+                    </button>
+                    
+                    {invoice.status === "NO COBRADA" && (
+                      <>
+                        <button
+                          onClick={() => handleOpenEditModal(invoice)}
+                          className="text-yellow-600 hover:text-yellow-800"
+                          title="Editar factura"
+                        >
+                          <Edit className="w-5 h-5" />
+                        </button>
+                        
+                        <button
+                          onClick={() => handleMarkAsPaid(invoice)}
+                          className="text-green-600 hover:text-green-800"
+                          title="Marcar como cobrada"
+                        >
+                          <CheckCircle className="w-5 h-5" />
+                        </button>
+                      </>
+                    )}
+                    
+                    <button
+                      onClick={() => handleDelete(invoice.id)}
+                      className="text-red-600 hover:text-red-800"
+                      title="Eliminar factura"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                </td>
               </tr>
             )}
           </GenericTable>
@@ -244,6 +333,14 @@ export default function Invoices() {
         onClose={handleCloseDetailModal}
         invoice={selectedDetail.invoice}
         rental={selectedDetail.rental}
+      />
+
+      <InvoiceFormModal
+        isOpen={isFormModalOpen}
+        onClose={handleCloseFormModal}
+        onSubmit={handleFormSubmit}
+        invoiceToEdit={invoiceToEdit}
+        rentalsList={reservations}
       />
     </section>
   );

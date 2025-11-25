@@ -21,7 +21,6 @@ export default function Home() {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Eliminado estado de año hardcodeado "2025"
   const [detailView, setDetailView] = useState(null);
   const [masterVehicleFilter, setMasterVehicleFilter] = useState("");
   const [monthRangeFilter, setMonthRangeFilter] = useState(null);
@@ -72,18 +71,20 @@ export default function Home() {
     );
   }
 
-  const { kpis, monthlyRevenue, popularVehicles, detailedRentals } =
-    dashboardData;
-
-  // Usamos los datos directos del backend sin filtrado artificial por año
-  const revenueData = monthlyRevenue;
+  // Extraemos inventoryData del objeto de respuesta
+  const {
+    kpis,
+    monthlyRevenue,
+    popularVehicles,
+    detailedRentals,
+    inventoryData,
+  } = dashboardData;
 
   const handleRevenueClick = (data) => {
     const month = data.month;
     setDetailView(`Detalle de Facturación para ${month}`);
     setMasterVehicleFilter("");
     setMonthRangeFilter(null);
-    console.log(`Abriendo detalle para ${month}...`);
   };
 
   const handleVehicleClick = (data) => {
@@ -92,14 +93,12 @@ export default function Home() {
     setMasterVehicleFilter(newFilter);
     setMonthRangeFilter(null);
     setDetailView(null);
-    console.log(`Filtro de vehículo aplicado: ${newFilter}`);
   };
 
   const handleRangeSelection = (startMonth, endMonth) => {
     setMonthRangeFilter({ start: startMonth, end: endMonth });
     setDetailView(null);
     setMasterVehicleFilter("");
-    console.log(`Rango de meses seleccionado: ${startMonth} a ${endMonth}`);
   };
 
   const clearMonthRangeFilter = () => setMonthRangeFilter(null);
@@ -187,7 +186,7 @@ export default function Home() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-3">
           <MonthlyRevenueChart
-            data={revenueData}
+            data={monthlyRevenue}
             onDataPointClick={handleRevenueClick}
             onRangeSelected={handleRangeSelection}
             currentMonthRange={monthRangeFilter}
@@ -206,7 +205,8 @@ export default function Home() {
 
         <QuarterlyRentalsChart data={monthlyRevenue} />
 
-        <InventoryBarChart />
+        {/* Ahora pasamos los datos reales de inventario */}
+        <InventoryBarChart data={inventoryData} />
       </div>
 
       <div className="grid grid-cols-1 gap-6">

@@ -5,6 +5,9 @@ const STATUS_COLORS = {
   FINALIZADO: "bg-green-100 text-green-800",
   ALQUILADO: "bg-blue-100 text-blue-800",
   RESERVADO: "bg-yellow-100 text-yellow-800",
+  CONFIRMADO: "bg-indigo-100 text-indigo-800",
+  CANCELADO: "bg-red-100 text-red-800",
+  PENDIENTE: "bg-orange-100 text-orange-800",
   DEFAULT: "bg-gray-100 text-gray-700",
 };
 
@@ -25,26 +28,36 @@ const MONTH_ORDER = [
 
 const getMonthAbbr = (dateString) => {
   if (!dateString) return "N/A";
-
-  const [year, month, day] = dateString.split("-").map(Number);
-
-  const date = new Date(year, month - 1, day);
-
-  return MONTH_ORDER[date.getMonth()];
+  const date = new Date(dateString);
+  // Ajuste simple para evitar errores de zona horaria al extraer el mes
+  const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+  const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
+  return MONTH_ORDER[adjustedDate.getMonth()];
 };
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
+  const date = new Date(dateString);
+  const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+  const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
+
   const options = { year: "numeric", month: "2-digit", day: "2-digit" };
-  return new Date(dateString).toLocaleDateString("es-AR", options);
+  return adjustedDate.toLocaleDateString("es-AR", options);
 };
 
-const getStatus = (rentalId) => {
-  if (rentalId === "r001" || rentalId === "r003")
-    return { name: "FINALIZADO", color: STATUS_COLORS.FINALIZADO };
-  if (rentalId === "r002")
-    return { name: "ALQUILADO", color: STATUS_COLORS.ALQUILADO };
-  return { name: "RESERVADO", color: STATUS_COLORS.RESERVADO };
+// Función corregida para obtener estilo basado en el estado real
+const getStatusStyle = (status) => {
+  if (!status) return STATUS_COLORS.DEFAULT;
+  const normalized = status.toUpperCase();
+  // Búsqueda parcial para mayor flexibilidad (ej: "En Curso" -> ALQUILADO color)
+  if (normalized.includes("FINALIZADO")) return STATUS_COLORS.FINALIZADO;
+  if (normalized.includes("ALQUILADO") || normalized.includes("CURSO"))
+    return STATUS_COLORS.ALQUILADO;
+  if (normalized.includes("RESERVADO")) return STATUS_COLORS.RESERVADO;
+  if (normalized.includes("CONFIRMADO")) return STATUS_COLORS.CONFIRMADO;
+  if (normalized.includes("CANCELADO")) return STATUS_COLORS.CANCELADO;
+
+  return STATUS_COLORS[normalized] || STATUS_COLORS.DEFAULT;
 };
 
 const applyDateRangeFilter = (data, dateFrom, dateTo) => {
@@ -55,17 +68,14 @@ const applyDateRangeFilter = (data, dateFrom, dateTo) => {
 
   return data.filter((item) => {
     const itemStartDate = new Date(item.startDate);
-
     let passesFilter = true;
 
     if (startFilter && itemStartDate < startFilter) {
       passesFilter = false;
     }
-
     if (endFilter && itemStartDate > endFilter) {
       passesFilter = false;
     }
-
     return passesFilter;
   });
 };
@@ -184,11 +194,11 @@ const ReportByVehicleSummary = ({
   let data = applyDateRangeFilter(rentalsData || [], dateFrom, dateTo);
 
   const filteredData = selectedFilterValue
-    ? data.filter((item) => item.vehicleName === selectedFilterValue)
+    ? data.filter((item) => item.vehicle === selectedFilterValue) // Nota: item.vehicle es el nombre
     : data;
 
   const groupedByVehicle = filteredData.reduce((acc, item) => {
-    const key = item.vehicleName;
+    const key = item.vehicle;
     if (!acc[key])
       acc[key] = {
         vehicleName: key,
@@ -269,22 +279,27 @@ const ReportByMonthDetail = ({
 }) => {
   let data = applyDateRangeFilter(rentalsData || [], dateFrom, dateTo);
 
-  const [filterMonth, filterYear] = selectedFilterValue.split("-");
+  // Si hay filtro de mes seleccionado desde el dropdown
+  if (selectedFilterValue) {
+    const [filterMonth, filterYear] = selectedFilterValue.split("-");
+    data = data.filter((item) => {
+      const date = new Date(item.startDate);
+      // Ajuste zona horaria
+      const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+      const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
 
-  const filteredData = data.filter((item) => {
-    if (!selectedFilterValue) return true;
-
-    const date = new Date(item.startDate);
-    const itemMonth = (date.getMonth() + 1).toString().padStart(2, "0");
-    const itemYear = date.getFullYear().toString();
-
-    return itemMonth === filterMonth && itemYear === filterYear;
-  });
+      const itemMonth = (adjustedDate.getMonth() + 1)
+        .toString()
+        .padStart(2, "0");
+      const itemYear = adjustedDate.getFullYear().toString();
+      return itemMonth === filterMonth && itemYear === filterYear;
+    });
+  }
 
   return (
     <div className="overflow-x-auto">
       <h4 className="text-lg font-semibold text-gray-800 mb-3">
-        Listado de Transacciones Detalladas (Filtrado por Mes/Fecha)
+        Listado de Transacciones Detalladas
       </h4>
       <table className="min-w-full divide-y divide-gray-200">
         <thead className="bg-gray-50">
@@ -310,24 +325,26 @@ const ReportByMonthDetail = ({
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
-          {filteredData.map((item, index) => {
-            const status = getStatus(item.rentalId);
+          {data.map((item, index) => {
+            // Usamos el estado real del item
+            const statusColor = getStatusStyle(item.status);
+
             return (
               <tr
-                key={item.rentalId + index}
+                key={item.id || index}
                 className="hover:bg-gray-50 transition-colors duration-150"
               >
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                   {formatDate(item.startDate)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {item.rentalId}
+                  {item.id}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
                   {item.clientName}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
-                  {item.vehicleName}
+                  {item.vehicle}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-base font-semibold text-gray-900">
                   $
@@ -337,9 +354,9 @@ const ReportByMonthDetail = ({
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span
-                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${status.color}`}
+                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColor}`}
                   >
-                    {status.name}
+                    {item.status || "Desconocido"}
                   </span>
                 </td>
               </tr>
@@ -347,7 +364,7 @@ const ReportByMonthDetail = ({
           })}
         </tbody>
       </table>
-      {filteredData.length === 0 && (
+      {data.length === 0 && (
         <div className="p-8 text-center text-gray-500">
           No hay transacciones registradas para el período seleccionado.
         </div>
@@ -374,7 +391,7 @@ export default function ReportsTable({
   const isVehicleFiltered = crossFilterVehicle !== "";
   if (isVehicleFiltered) {
     filteredDataByMaster = data.filter(
-      (item) => item.vehicleName === crossFilterVehicle
+      (item) => item.vehicle === crossFilterVehicle // Nota: en el servicio se mapeó a 'vehicle'
     );
   }
 
@@ -396,19 +413,24 @@ export default function ReportsTable({
     ...new Set(finalFilteredData.map((item) => item.clientName)),
   ];
   const allVehicles = [
-    ...new Set(finalFilteredData.map((item) => item.vehicleName)),
+    ...new Set(finalFilteredData.map((item) => item.vehicle)),
   ];
 
   const allMonths = [
     ...new Set(
       finalFilteredData.map((item) => {
+        if (!item.startDate) return "";
         const date = new Date(item.startDate);
-        return `${(date.getMonth() + 1)
+        const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+        const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
+
+        return `${(adjustedDate.getMonth() + 1)
           .toString()
-          .padStart(2, "0")}-${date.getFullYear()}`;
+          .padStart(2, "0")}-${adjustedDate.getFullYear()}`;
       })
     ),
   ]
+    .filter(Boolean)
     .sort()
     .reverse();
 
@@ -476,18 +498,17 @@ export default function ReportsTable({
 
   return (
     <div className="space-y-6 lg:col-span-4">
-      {}
+      {/* Filtro Maestro Activo Banner */}
       {isCrossFiltered && (
         <div className="bg-purple-100 border-l-4 border-purple-500 p-4 rounded-md shadow-md flex justify-between items-center transition-all duration-300">
           <p className="font-semibold text-purple-800">
-            {isVehicleFiltered && `Vehículo Filtrado: ${crossFilterVehicle}`}
+            {isVehicleFiltered && `Vehículo Filtrado: ${crossFilterVehicle} `}
             {isMonthRangeActive &&
-              `Rango de Meses: ${monthRangeFilter.start} a ${monthRangeFilter.end}`}
+              `| Rango de Meses: ${monthRangeFilter.start} a ${monthRangeFilter.end} `}
             {isDateRangeActive &&
-              `Rango de Fechas: ${formatDate(dateFrom)} a ${formatDate(
+              `| Rango de Fechas: ${formatDate(dateFrom)} a ${formatDate(
                 dateTo
               )}`}
-            (Filtro Maestro Activo)
           </p>
           <button
             onClick={handleClearCrossFilters}
@@ -500,7 +521,7 @@ export default function ReportsTable({
       )}
 
       <div className="bg-white p-4 sm:p-6 rounded-xl border border-gray-100 shadow-xl flex flex-col md:flex-row md:items-end gap-4">
-        {}
+        {/* Selector Tipo de Reporte */}
         <div className="flex-1">
           <label
             htmlFor="reportType"
@@ -527,7 +548,7 @@ export default function ReportsTable({
           </select>
         </div>
 
-        {}
+        {/* Selector Entidad Específica */}
         {filterOptions.label !== "" && (
           <div className="flex-1">
             <label
@@ -559,7 +580,7 @@ export default function ReportsTable({
           </div>
         )}
 
-        {}
+        {/* Toggle Filtros Avanzados */}
         <div className="md:pt-4">
           <button
             onClick={() => setIsAdvancedFilterOpen((prev) => !prev)}
@@ -578,7 +599,7 @@ export default function ReportsTable({
         </div>
       </div>
 
-      {}
+      {/* Panel Filtros Avanzados */}
       {isAdvancedFilterOpen && (
         <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-5 flex flex-wrap gap-4 transition-all duration-300">
           <h3 className="w-full font-bold text-lg flex items-center gap-2 text-gray-800 border-b pb-2 mb-2">
@@ -586,7 +607,7 @@ export default function ReportsTable({
             Filtro por Rango de Fechas (Fecha de Inicio del Alquiler)
           </h3>
 
-          {}
+          {/* Date From */}
           <div className="flex-1 min-w-[200px]">
             <label
               htmlFor="dateFrom"
@@ -606,7 +627,7 @@ export default function ReportsTable({
             />
           </div>
 
-          {}
+          {/* Date To */}
           <div className="flex-1 min-w-[200px]">
             <label
               htmlFor="dateTo"
@@ -626,7 +647,7 @@ export default function ReportsTable({
             />
           </div>
 
-          {}
+          {/* Clear Button */}
           <div className="md:pt-4">
             <button
               onClick={() => {
@@ -642,7 +663,7 @@ export default function ReportsTable({
         </div>
       )}
 
-      {}
+      {/* Contenedor de la Tabla */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-xl overflow-hidden">
         {renderReportContent()}
       </div>

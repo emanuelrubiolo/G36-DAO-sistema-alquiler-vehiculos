@@ -1,32 +1,13 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, Sliders, X, Edit, Trash2 } from "lucide-react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Plus, Sliders, X } from "lucide-react";
+import { useLocation } from "react-router-dom";
 import { maintenanceService, vehicleService } from "../services";
 
 import MaintenanceFormModal from "../components/maintenance/MaintenanceFormModal";
+import MaintenanceList from "../components/maintenance/MaintenanceList"; // Importamos el componente correcto
 
 import SearchBoxWithButton from "../components/ui/SearchBoxWithButton";
 import StyledPrimaryButton from "../components/ui/StyledPrimaryButton";
-import GenericTable from "../components/ui/GenericTable";
-import TableActionCell from "../components/ui/TableActionCell";
-import { formatCurrency, formatDate } from "../utils/formatters";
-
-const TypeBadge = ({ type }) => {
-  const typeStyles = {
-    Preventivo: "bg-blue-100 text-blue-800",
-    Correctivo: "bg-red-100 text-red-800",
-    "En progreso": "bg-yellow-100 text-yellow-800",
-  };
-  return (
-    <span
-      className={`px-2.5 py-0.5 inline-flex text-xs font-semibold rounded-full ${
-        typeStyles[type] || "bg-gray-100 text-gray-800"
-      }`}
-    >
-      {type}
-    </span>
-  );
-};
 
 export default function Maintenance() {
   const location = useLocation();
@@ -48,7 +29,11 @@ export default function Maintenance() {
   }, []);
 
   useEffect(() => {
-    if (location.state && location.state.filter === "PENDIENTE" && allJobs.length > 0) {
+    if (
+      location.state &&
+      location.state.filter === "PENDIENTE" &&
+      allJobs.length > 0
+    ) {
       const pendingJobs = allJobs.filter(
         (job) => job.type === "Preventivo" || job.type === "Correctivo"
       );
@@ -68,7 +53,7 @@ export default function Maintenance() {
       setLoading(true);
       const [jobsData, vehiclesData] = await Promise.all([
         maintenanceService.getAll(),
-        vehicleService.getAll()
+        vehicleService.getAll(),
       ]);
       setAllJobs(jobsData);
       setMaintenanceJobs(jobsData);
@@ -92,6 +77,7 @@ export default function Maintenance() {
   const handleSearchExecution = () => {
     console.log("Ejecutando búsqueda de mantenimiento con:", searchTerm);
   };
+
   const handleOpenCreateModal = () => {
     setJobToEdit(null);
     setIsModalOpen(true);
@@ -108,37 +94,37 @@ export default function Maintenance() {
   const handleFormSubmit = async (formData) => {
     try {
       if (jobToEdit) {
-        
-        await maintenanceService.finish(jobToEdit.id);
-        //await maintenanceService.update(jobToEdit.id, formData);
+        // Si el usuario marcó como finalizado en el form, el form ya lo envía en el payload
+        // pero aquí usamos el update genérico o finish según corresponda.
+        // Para simplificar, usamos update ya que el modal maneja la lógica de campos.
+        await maintenanceService.update(jobToEdit.id, formData);
         alert("Mantenimiento actualizado exitosamente");
       } else {
-        await maintenanceService.create(formData);        
+        await maintenanceService.create(formData);
         alert("Mantenimiento registrado exitosamente");
       }
       await loadData();
       handleCloseModal();
     } catch (error) {
       console.error("Error submitting form:", error);
-      const errorMsg = error.response?.data?.detail || "Error al guardar el mantenimiento";
+      const errorMsg =
+        error.response?.data?.detail || "Error al guardar el mantenimiento";
       alert(errorMsg);
     }
   };
 
-  const handleDelete = async (job) => {
+  const handleDelete = async (jobId) => {
     if (
-      window.confirm(
-        `¿Estás seguro de que quieres eliminar el registro de ${job?.name || "este mantenimiento"}?`
-                
-      )
+      window.confirm("¿Estás seguro de que quieres eliminar este registro?")
     ) {
       try {
-        await maintenanceService.delete(job);
+        await maintenanceService.delete(jobId);
         alert("Mantenimiento eliminado exitosamente");
         await loadData();
       } catch (error) {
         console.error("Error deleting maintenance:", error);
-        const errorMsg = error.response?.data?.detail || "Error al eliminar el mantenimiento";
+        const errorMsg =
+          error.response?.data?.detail || "Error al eliminar el mantenimiento";
         alert(errorMsg);
       }
     }
@@ -160,13 +146,6 @@ export default function Maintenance() {
       </div>
     );
   }
-
-  const columns = [
-    { header: "Vehículo / Descripción", field: "vehicleName" },
-    { header: "Período", field: "period" },
-    { header: "Tipo", field: "type" },
-    { header: "Costo", field: "cost", align: "right" },
-  ];
 
   return (
     <section className="space-y-6">
@@ -232,55 +211,13 @@ export default function Maintenance() {
           </div>
         )}
 
+        {/* Reemplazo de GenericTable por MaintenanceList */}
         <div className="flex-grow">
-          <GenericTable
-            columns={columns}
-            data={filteredJobs}
-            emptyMessage="No se encontraron registros de mantenimiento."
-          >
-            {(job) => (
-              <tr
-                key={job.id}
-                className="hover:bg-gray-50 transition-colors duration-150"
-              >
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">
-                    {job.vehicleName}
-                  </div>
-                  <div className="text-xs text-gray-500 truncate max-w-xs">
-                    {job.description}
-                  </div>
-                </td>
-
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-800">
-                    Inicia: {formatDate(job.startDate)}
-                  </div>
-                  <div className="text-sm text-gray-500">
-                    Finaliza: {formatDate(job.endDate)}
-                  </div>
-                </td>
-
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <TypeBadge type={job.type} />
-                </td>
-
-                <td className="px-6 py-4 whitespace-nowrap text-right">
-                  <span className="text-sm font-extrabold text-gray-900">
-                    {formatCurrency(job.cost)}
-                  </span>
-                </td>
-
-                <TableActionCell
-                  data={job}
-                  onEdit={handleOpenEditModal}
-                  onDelete={handleDelete}
-                  additionalActionTitle="Ver/Editar"
-                  hideDelete={false}
-                />
-              </tr>
-            )}
-          </GenericTable>
+          <MaintenanceList
+            maintenanceJobs={filteredJobs}
+            onEdit={handleOpenEditModal}
+            onDelete={handleDelete}
+          />
         </div>
       </div>
 

@@ -25,7 +25,7 @@ export default function Incidents() {
       setLoading(true);
       const [incidentsData, rentalsData] = await Promise.all([
         incidentService.getAll(),
-        leaseService.getAll()
+        leaseService.getAll(),
       ]);
       setIncidents(incidentsData);
       setRentalsList(rentalsData);
@@ -76,13 +76,13 @@ export default function Incidents() {
       handleCloseModal();
     } catch (error) {
       console.error("Error submitting form:", error);
-      const errorMsg = error.response?.data?.detail || "Error al guardar el incidente";
+      const errorMsg =
+        error.response?.data?.detail || "Error al guardar el incidente";
       alert(errorMsg);
     }
   };
 
   const handleDelete = async (incidentId) => {
-    
     if (
       window.confirm("¿Estás seguro de que quieres eliminar este incidente?")
     ) {
@@ -92,7 +92,8 @@ export default function Incidents() {
         await loadData();
       } catch (error) {
         console.error("Error deleting incident:", error);
-        const errorMsg = error.response?.data?.detail || "Error al eliminar el incidente";
+        const errorMsg =
+          error.response?.data?.detail || "Error al eliminar el incidente";
         alert(errorMsg);
       }
     }

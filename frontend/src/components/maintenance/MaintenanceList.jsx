@@ -1,12 +1,29 @@
 import StyledActionButton from "../ui/StyledActionButton";
-import { Edit, Trash2 } from "lucide-react";
+import { Edit, Trash2, Eye } from "lucide-react";
 
+// Helper para formatear fechas
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
-  // Ajustamos para evitar problemas de zona horaria con fechas YYYY-MM-DD
-  const date = new Date(dateString + "T00:00:00");
+  const date = new Date(dateString);
   const options = { year: "numeric", month: "2-digit", day: "2-digit" };
   return date.toLocaleDateString("es-AR", options);
+};
+
+// Helper robusto para moneda
+const formatCurrency = (amount) => {
+  // Convertimos a float por si viene como string "123.00"
+  const num = parseFloat(amount);
+
+  // Validamos si es un número real
+  if (!isNaN(num)) {
+    return `$${num.toLocaleString("es-AR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  }
+
+  // Valor por defecto si no hay costo válido
+  return "$0,00";
 };
 
 const TypeBadge = ({ type }) => {
@@ -85,63 +102,75 @@ export default function MaintenanceList({ maintenanceJobs, onEdit, onDelete }) {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {maintenanceJobs.map((job) => (
-              <tr
-                key={job.id}
-                className="hover:bg-gray-50 transition-colors duration-150"
-              >
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">
-                    {job.vehicleName}
-                  </div>
-                  <div className="text-xs text-gray-500 truncate max-w-xs">
-                    {job.description}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-800">
-                    Inicia: {formatDate(job.startDate)}
-                  </div>
-                  <div className="text-sm text-gray-500">
-                    Finaliza: {formatDate(job.endDate)}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <TypeBadge type={job.type} />
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <MaintenanceStatusBadge status={job.status || "Iniciado"} />
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm font-extrabold text-gray-900">
-                    $
-                    {job.cost.toLocaleString("es-AR", {
-                      minimumFractionDigits: 2,
-                    })}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <div className="flex justify-end items-center gap-1">
-                    <StyledActionButton
-                      onClick={() => onEdit(job)}
-                      title="Ver/Modificar Registro"
-                      colorClass="text-blue-600"
-                      isIconOnly={true}
-                    >
-                      <Edit className="w-5 h-5" />
-                    </StyledActionButton>
-                    <StyledActionButton
-                      onClick={() => onDelete(job.id)}
-                      title="Eliminar Registro"
-                      colorClass="text-red-600"
-                      isIconOnly={true}
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </StyledActionButton>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {maintenanceJobs.map((job) => {
+              // Corrección: Usar .includes() para ser más flexible con el estado
+              const statusLower = job.status ? job.status.toLowerCase() : "";
+              const isFinalized = statusLower.includes("finalizado");
+
+              return (
+                <tr
+                  key={job.id}
+                  className="hover:bg-gray-50 transition-colors duration-150"
+                >
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">
+                      {job.vehicleName}
+                    </div>
+                    <div className="text-xs text-gray-500 truncate max-w-xs">
+                      {job.description}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-800">
+                      Inicia: {formatDate(job.startDate)}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      Finaliza: {formatDate(job.endDate)}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <TypeBadge type={job.type} />
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <MaintenanceStatusBadge status={job.status || "Iniciado"} />
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="text-sm font-extrabold text-gray-900">
+                      {formatCurrency(job.cost)}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="flex justify-end items-center gap-1">
+                      <StyledActionButton
+                        onClick={() => onEdit(job)}
+                        title={
+                          isFinalized ? "Ver Detalle" : "Ver/Modificar Registro"
+                        }
+                        colorClass={
+                          isFinalized ? "text-gray-600" : "text-blue-600"
+                        }
+                        isIconOnly={true}
+                      >
+                        {isFinalized ? (
+                          <Eye className="w-5 h-5" />
+                        ) : (
+                          <Edit className="w-5 h-5" />
+                        )}
+                      </StyledActionButton>
+
+                      <StyledActionButton
+                        onClick={() => onDelete(job.id)}
+                        title="Eliminar Registro"
+                        colorClass="text-red-600"
+                        isIconOnly={true}
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </StyledActionButton>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

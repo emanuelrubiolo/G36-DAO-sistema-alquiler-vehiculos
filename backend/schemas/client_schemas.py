@@ -27,6 +27,7 @@ class ClientUpdate(BaseModel):
     dni: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[str] = None
+    status: Optional[str] = None
 
 
 class ClientStatusUpdate(BaseModel):

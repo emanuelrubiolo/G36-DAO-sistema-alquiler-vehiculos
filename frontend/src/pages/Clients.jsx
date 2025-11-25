@@ -96,6 +96,7 @@ export default function Clients() {
   const handleFormSubmit = async (formData) => {
     try {
       if (clientToEdit) {
+        //todo: está pasando por defecto el estado actual, en vez del seleccionado en el form
         await clientService.update(clientToEdit.id, formData);
         alert("Cliente actualizado exitosamente");
       } else {
@@ -112,11 +113,12 @@ export default function Clients() {
   };
 
   const handleDeleteClient = async (client) => {
+    console.log("Eliminando cliente:", client);
     if (
-      window.confirm(`¿Estás seguro de que quieres eliminar a ${client.name}?`)
+      window.confirm(`¿Estás seguro de que quieres eliminar a ${client?.name || "este cliente"}?`)
     ) {
       try {
-        await clientService.delete(client.id);
+        await clientService.delete(client);
         alert("Cliente eliminado exitosamente");
         await loadData();
       } catch (error) {

@@ -11,6 +11,8 @@ class MaintenanceCreate(BaseModel):
     type: str
     description: str
     cost: Decimal
+   # startDate: datetime
+    endDate: Optional[datetime] = None
 
 
 class MaintenanceResponse(BaseModel):
@@ -23,6 +25,7 @@ class MaintenanceResponse(BaseModel):
     type: str
     description: str
     cost: Decimal
+    status: str
 
     class Config:
         from_attributes = True

@@ -1,18 +1,18 @@
-import ReservationStatusBadge from "../reservation/ReservationStatusBadge";
 import StyledActionButton from "../ui/StyledActionButton";
-import { Edit, Eye, Trash2, Wrench } from "lucide-react";
+import { Edit, Trash2 } from "lucide-react";
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
+  // Ajustamos para evitar problemas de zona horaria con fechas YYYY-MM-DD
+  const date = new Date(dateString + "T00:00:00");
   const options = { year: "numeric", month: "2-digit", day: "2-digit" };
-  return new Date(dateString).toLocaleDateString("es-AR", options);
+  return date.toLocaleDateString("es-AR", options);
 };
 
 const TypeBadge = ({ type }) => {
   const typeStyles = {
     Preventivo: "bg-blue-100 text-blue-800",
     Correctivo: "bg-red-100 text-red-800",
-    "En progreso": "bg-yellow-100 text-yellow-800",
   };
   return (
     <span
@@ -21,6 +21,23 @@ const TypeBadge = ({ type }) => {
       }`}
     >
       {type}
+    </span>
+  );
+};
+
+const MaintenanceStatusBadge = ({ status }) => {
+  const normalized = status ? status.toLowerCase() : "";
+  let color = "bg-gray-100 text-gray-800";
+
+  if (normalized.includes("iniciado")) color = "bg-yellow-100 text-yellow-800";
+  if (normalized.includes("proceso")) color = "bg-blue-100 text-blue-800";
+  if (normalized.includes("finalizado")) color = "bg-green-100 text-green-800";
+
+  return (
+    <span
+      className={`px-2.5 py-0.5 inline-flex text-xs font-semibold rounded-full ${color}`}
+    >
+      {status}
     </span>
   );
 };
@@ -49,6 +66,12 @@ export default function MaintenanceList({ maintenanceJobs, onEdit, onDelete }) {
                 className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
               >
                 Tipo
+              </th>
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
+              >
+                Estado
               </th>
               <th
                 scope="col"
@@ -87,6 +110,9 @@ export default function MaintenanceList({ maintenanceJobs, onEdit, onDelete }) {
                   <TypeBadge type={job.type} />
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
+                  <MaintenanceStatusBadge status={job.status || "Iniciado"} />
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
                   <span className="text-sm font-extrabold text-gray-900">
                     $
                     {job.cost.toLocaleString("es-AR", {
@@ -96,7 +122,6 @@ export default function MaintenanceList({ maintenanceJobs, onEdit, onDelete }) {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div className="flex justify-end items-center gap-1">
-                    {}
                     <StyledActionButton
                       onClick={() => onEdit(job)}
                       title="Ver/Modificar Registro"
@@ -105,7 +130,6 @@ export default function MaintenanceList({ maintenanceJobs, onEdit, onDelete }) {
                     >
                       <Edit className="w-5 h-5" />
                     </StyledActionButton>
-                    {}
                     <StyledActionButton
                       onClick={() => onDelete(job.id)}
                       title="Eliminar Registro"

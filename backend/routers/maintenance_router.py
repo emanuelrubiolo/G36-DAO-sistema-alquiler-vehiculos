@@ -65,7 +65,7 @@ def create_maintenance(maintenance: MaintenanceCreate, db: Session = Depends(get
     #    employeeId=maintenance.employeeId,
         vehicleName=f"{vehicle.brand} {vehicle.model}",  # Auto-generar nombre
         startDate=datetime.now(),
-        endDate=None,
+        endDate=maintenance.endDate,
         type=maintenance.type,
         description=maintenance.description,
         cost=maintenance.cost
@@ -87,7 +87,7 @@ def finish_maintenance(id_mantenimiento: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Maintenance not found")
 
     # Verificar que no esté ya finalizado
-    if maintenance.endDate is not None:
+    if maintenance.status == "finalizado":
         raise HTTPException(status_code=400, detail="Maintenance already finished")
 
     # Finalizar mantenimiento
@@ -97,6 +97,7 @@ def finish_maintenance(id_mantenimiento: int, db: Session = Depends(get_db)):
     vehicle = db.query(Vehicle).filter(Vehicle.id == maintenance.vehicleId).first()
     if vehicle:
         vehicle.estado = "disponible"
+    maintenance.status = "finalizado"
 
     db.commit()
     db.refresh(maintenance)

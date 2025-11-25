@@ -7,7 +7,6 @@ import {
   CheckCircle,
   Eye,
   Download,
-  Edit,
   Trash2,
   Car,
   Calendar,
@@ -18,7 +17,6 @@ import { invoiceService, leaseService } from "../services";
 import SearchBoxWithButton from "../components/ui/SearchBoxWithButton";
 import StyledPrimaryButton from "../components/ui/StyledPrimaryButton";
 import GenericTable from "../components/ui/GenericTable";
-import TableActionCell from "../components/ui/TableActionCell";
 import InvoiceDetailModal from "../components/invoice/InvoiceDetailModal";
 import InvoiceFormModal from "../components/invoice/InvoiceFormModal";
 
@@ -100,6 +98,7 @@ export default function Invoices() {
     setIsFormModalOpen(true);
   };
 
+  // Nota: handleOpenEditModal ya no se usa en la tabla, pero se mantiene por si se necesita internamente o en el futuro.
   const handleOpenEditModal = (invoice) => {
     setInvoiceToEdit(invoice);
     setIsFormModalOpen(true);
@@ -336,7 +335,8 @@ export default function Invoices() {
 
                   <td className="px-6 py-4 whitespace-nowrap text-right">
                     <div className="text-sm font-extrabold text-gray-900">
-                      {formatCurrency(invoice.total)}
+                      {/* CORRECCIÓN: parseFloat asegura que sea número */}
+                      {formatCurrency(parseFloat(invoice.total))}
                     </div>
                     <div className="text-xs text-gray-500">
                       {invoice.paymentMethod}
@@ -360,14 +360,6 @@ export default function Invoices() {
                       {(invoice.status === "pendiente" ||
                         invoice.status === "NO COBRADA") && (
                         <>
-                          <button
-                            onClick={() => handleOpenEditModal(invoice)}
-                            className="text-yellow-600 hover:text-yellow-800"
-                            title="Editar factura"
-                          >
-                            <Edit className="w-5 h-5" />
-                          </button>
-
                           <button
                             onClick={() => handleMarkAsPaid(invoice)}
                             className="text-green-600 hover:text-green-800"

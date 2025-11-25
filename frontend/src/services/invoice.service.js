@@ -4,12 +4,15 @@ export const invoiceService = {
   // Get all invoices with optional filters
   getAll: async (filters = {}) => {
     const params = new URLSearchParams();
-    if (filters.status) params.append('status', filters.status);
-    if (filters.paymentMethod) params.append('paymentMethod', filters.paymentMethod);
-    if (filters.clientName) params.append('clientName', filters.clientName);
-    
+    if (filters.status) params.append("status", filters.status);
+    if (filters.paymentMethod)
+      params.append("paymentMethod", filters.paymentMethod);
+    if (filters.clientName) params.append("clientName", filters.clientName);
+
     const queryString = params.toString();
-    return await apiService.get(`/facturas/${queryString ? `?${queryString}` : ''}`);
+    return await apiService.get(
+      `/facturas/${queryString ? `?${queryString}` : ""}`
+    );
   },
 
   // Get invoice by ID
@@ -27,18 +30,13 @@ export const invoiceService = {
     return await apiService.put(`/facturas/${invoiceId}`, invoiceData);
   },
 
-  // Delete invoice
-  delete: async (invoiceId) => {
-    return await apiService.delete(`/facturas/${invoiceId}`);
-  },
-
   // Mark invoice as paid (change status to "pagada")
   markAsPaid: async (invoiceId) => {
     return await apiService.patch(`/facturas/${invoiceId}/pagar`);
   },
 
   // Cancel invoice (change status to "anulada")
-  cancel: async (invoiceId) => {
+  delete: async (invoiceId) => {
     return await apiService.patch(`/facturas/${invoiceId}/anular`);
   },
 };

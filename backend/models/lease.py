@@ -14,7 +14,7 @@ class Lease(Base):
     date_time_start = Column(DATETIME, nullable=False)
     date_time_end = Column(DATETIME, nullable=False)
     amount = Column(DECIMAL(10, 2))
-    state = Column(String(45), default="creado")  # creado, confirmado, cancelado, finalizado
+    state = Column(String(45), default="confirmado")  # creado, confirmado, cancelado, finalizado
     date_create = Column(DATE, nullable=False)
     date_confirm = Column(DATE, nullable=True)
     date_cancel = Column(DATE, nullable=True)

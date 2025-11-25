@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { DollarSign, ClipboardList, Users, Car, Filter, X, RefreshCw } from "lucide-react";
+import {
+  DollarSign,
+  ClipboardList,
+  Users,
+  Car,
+  Filter,
+  X,
+  RefreshCw,
+} from "lucide-react";
 import { dashboardService } from "../services";
 
 import KpiCard from "../components/dashboard/KpiCard";
@@ -21,8 +29,8 @@ const filterDataByYear = (data, year) => {
 export default function Home() {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
-  
-  const [selectedYear, setSelectedYear] = useState("2024");
+
+  const [selectedYear, setSelectedYear] = useState("2025");
   const [detailView, setDetailView] = useState(null);
   const [masterVehicleFilter, setMasterVehicleFilter] = useState("");
   const [monthRangeFilter, setMonthRangeFilter] = useState(null);
@@ -33,8 +41,8 @@ export default function Home() {
       const data = await dashboardService.getData();
       setDashboardData(data);
     } catch (error) {
-      console.error('Error:', error);
-      alert('Error al cargar datos del dashboard');
+      console.error("Error:", error);
+      alert("Error al cargar datos del dashboard");
     } finally {
       setLoading(false);
     }
@@ -49,7 +57,9 @@ export default function Home() {
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <RefreshCw className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-lg font-semibold text-gray-700">Cargando dashboard...</p>
+          <p className="text-lg font-semibold text-gray-700">
+            Cargando dashboard...
+          </p>
         </div>
       </div>
     );
@@ -71,7 +81,8 @@ export default function Home() {
     );
   }
 
-  const { kpis, monthlyRevenue, popularVehicles, detailedRentals } = dashboardData;
+  const { kpis, monthlyRevenue, popularVehicles, detailedRentals } =
+    dashboardData;
 
   const filteredRevenue = filterDataByYear(monthlyRevenue, selectedYear);
 
@@ -122,22 +133,6 @@ export default function Home() {
             <RefreshCw className="w-4 h-4" />
             Actualizar
           </button>
-
-          <div className="flex items-center space-x-2">
-            <Filter className="w-5 h-5 text-gray-500" />
-            <select
-              value={selectedYear}
-              onChange={(e) => {
-                setSelectedYear(e.target.value);
-                setDetailView(null);
-              }}
-              className="p-2 border border-gray-300 rounded-lg text-sm font-semibold focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="2025">Año 2025 (Proyectado)</option>
-              <option value="2024">Año 2024 (Actual)</option>
-              <option value="2023">Año 2023 (Histórico)</option>
-            </select>
-          </div>
         </div>
       </header>
 
@@ -204,8 +199,6 @@ export default function Home() {
             currentMonthRange={monthRangeFilter}
           />
         </div>
-
-        <MaintenanceAlertWidget />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

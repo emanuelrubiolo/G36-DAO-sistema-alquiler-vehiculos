@@ -139,9 +139,11 @@ def create_lease(lease: LeaseCreate, db: Session = Depends(get_db)):
         start_kilometers=lease.start_kilometers
     )
 
+    vehicle.estado = "no disponible"
     db.add(db_lease)
     db.commit()
     db.refresh(db_lease)
+    db.refresh(vehicle)
 
     return {
         "id": db_lease.id,

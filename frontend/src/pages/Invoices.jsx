@@ -314,7 +314,7 @@ export default function Invoices() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Todos los estados</option>
-                <option value="COBRADA">Cobrada</option>
+                <option value="pagada">Cobrada</option>
                 <option value="pendiente">Pendiente</option>
               </select>
             </div>

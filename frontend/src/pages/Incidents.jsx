@@ -12,6 +12,9 @@ export default function Incidents() {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
 
+  // Estado para el filtro de tipo
+  const [typeFilter, setTypeFilter] = useState("");
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [incidentToEdit, setIncidentToEdit] = useState(null);
   const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false);
@@ -27,22 +30,29 @@ export default function Incidents() {
         incidentService.getAll(),
         leaseService.getAll(),
       ]);
-      setIncidents(incidentsData);
-      setRentalsList(rentalsData);
+
+      setIncidents(Array.isArray(incidentsData) ? incidentsData : []);
+      setRentalsList(Array.isArray(rentalsData) ? rentalsData : []);
     } catch (error) {
       console.error("Error loading data:", error);
       alert("Error al cargar datos");
+      setIncidents([]);
+      setRentalsList([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredIncidents = incidents.filter(
-    (incident) =>
+  const filteredIncidents = incidents.filter((incident) => {
+    const matchesSearch =
       incident.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       incident.vehicleName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      incident.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+      incident.description?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesType = typeFilter ? incident.type === typeFilter : true;
+
+    return matchesSearch && matchesType;
+  });
 
   const handleSearchExecution = () => {
     console.log("Ejecutando búsqueda de incidentes con:", searchTerm);
@@ -152,16 +162,22 @@ export default function Incidents() {
 
             <div className="space-y-4">
               <div className="font-semibold text-gray-700">Tipo:</div>
-              <div className="h-16 bg-gray-100 rounded flex items-center justify-center text-sm text-gray-500">
-                (Daño / Multa)
-              </div>
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Todos los tipos</option>
+                <option value="Daño">Daño</option>
+                <option value="Multa">Multa</option>
+              </select>
             </div>
           </div>
         )}
 
         <div className="flex-grow">
           <IncidentList
-            incidents={filteredIncidents ?? []}
+            incidents={filteredIncidents}
             onEdit={handleOpenEditModal}
             onDelete={handleDelete}
           />

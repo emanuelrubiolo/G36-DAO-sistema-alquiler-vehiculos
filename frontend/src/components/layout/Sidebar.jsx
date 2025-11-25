@@ -44,6 +44,7 @@ export default function Sidebar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const employeeName = currentUser?.name || "Usuario";
+  const employeeId = currentUser?.id || "id";
   const employeeDNI = currentUser?.dni || "N/A";
   const employeeCargo = currentUser?.cargo || "Empleado";
   const employeeEmail = currentUser?.email || "N/A";
@@ -94,6 +95,9 @@ export default function Sidebar() {
           <div className="text-left min-w-0 flex-1">
             <p className="text-sm font-semibold text-gray-900 truncate">
               {employeeName}
+            </p>
+            <p className="text-sm font-semibold text-gray-900 truncate">
+              {employeeId}
             </p>
             <p className="text-xs text-gray-500 truncate">{employeeCargo}</p>
           </div>

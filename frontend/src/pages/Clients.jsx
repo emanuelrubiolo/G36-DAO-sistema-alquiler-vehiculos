@@ -29,7 +29,10 @@ const getToggleClasses = (currentView, buttonView) => {
 };
 
 const StatusBadge = ({ status }) => {
-  const isActive = status === "Activo";
+  // Normalizamos a minúsculas para asegurar que "Activo", "activo" o "ACTIVO" funcionen
+  const normalizedStatus = status ? status.toLowerCase() : "";
+  const isActive = normalizedStatus === "activo";
+
   return (
     <span
       className={`px-2.5 py-0.5 inline-flex text-xs font-semibold rounded-full ${
@@ -58,10 +61,12 @@ export default function Clients() {
     try {
       setLoading(true);
       const data = await clientService.getAll();
-      setClients(data);
+      // Protección: Aseguramos que data sea un array antes de setearlo
+      setClients(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error loading clients:", error);
       alert("Error al cargar clientes");
+      setClients([]);
     } finally {
       setLoading(false);
     }
@@ -96,8 +101,20 @@ export default function Clients() {
   const handleFormSubmit = async (formData) => {
     try {
       if (clientToEdit) {
-        //todo: está pasando por defecto el estado actual, en vez del seleccionado en el form
+        // 1. Actualizar datos generales (PUT)
         await clientService.update(clientToEdit.id, formData);
+
+        // 2. Verificar si el estado cambió para llamar al endpoint PATCH específico
+        const currentStatus = clientToEdit.status
+          ? clientToEdit.status.toLowerCase()
+          : "";
+        const newStatus = formData.status ? formData.status.toLowerCase() : "";
+
+        if (currentStatus !== newStatus) {
+          console.log(`Actualizando estado de ${currentStatus} a ${newStatus}`);
+          await clientService.updateStatus(clientToEdit.id, formData.status);
+        }
+
         alert("Cliente actualizado exitosamente");
       } else {
         await clientService.create(formData);
@@ -107,23 +124,28 @@ export default function Clients() {
       handleCloseModal();
     } catch (error) {
       console.error("Error submitting form:", error);
-      const errorMsg = error.response?.data?.detail || "Error al guardar el cliente";
+      const errorMsg =
+        error.response?.data?.detail || "Error al guardar el cliente";
       alert(errorMsg);
     }
   };
 
-  const handleDeleteClient = async (client) => {
-    console.log("Eliminando cliente:", client);
+  const handleDeleteClient = async (clientData) => {
+    // La tabla devuelve el objeto completo, nos aseguramos de obtener el ID
+    const clientId = clientData.id || clientData;
+    const clientName = clientData.name || "este cliente";
+
     if (
-      window.confirm(`¿Estás seguro de que quieres eliminar a ${client?.name || "este cliente"}?`)
+      window.confirm(`¿Estás seguro de que quieres eliminar a ${clientName}?`)
     ) {
       try {
-        await clientService.delete(client);
+        await clientService.delete(clientId);
         alert("Cliente eliminado exitosamente");
         await loadData();
       } catch (error) {
         console.error("Error deleting client:", error);
-        const errorMsg = error.response?.data?.detail || "Error al eliminar el cliente";
+        const errorMsg =
+          error.response?.data?.detail || "Error al eliminar el cliente";
         alert(errorMsg);
       }
     }
@@ -143,7 +165,7 @@ export default function Clients() {
   const columns = [
     { header: "Nombre", field: "name" },
     { header: "DNI", field: "dni" },
-    { header: "Contacto", field: "contact" },
+    { header: "Contacto", field: "phone" },
     { header: "Estado", field: "status" },
   ];
 
@@ -209,10 +231,12 @@ export default function Clients() {
         <h1 className="text-3xl font-bold text-gray-900">
           Gestión de Clientes
         </h1>
-        <StyledPrimaryButton onClick={handleOpenCreateModal}>
-          <Plus className="w-5 h-5" />
-          <span>Agregar Cliente</span>
-        </StyledPrimaryButton>
+        <div className="flex gap-3">
+          <StyledPrimaryButton onClick={handleOpenCreateModal}>
+            <Plus className="w-5 h-5" />
+            <span>Agregar Cliente</span>
+          </StyledPrimaryButton>
+        </div>
       </header>
 
       <div className="flex gap-6">

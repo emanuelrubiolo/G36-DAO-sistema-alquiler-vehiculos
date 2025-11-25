@@ -46,7 +46,8 @@ export default function ClientFormModal({
     dni: clientToEdit?.dni || "",
     email: clientToEdit?.email || "",
     phone: clientToEdit?.phone || "",
-    status: clientToEdit?.status || "Activo",
+    // Normalizamos a minúscula por defecto para coincidir con el backend y los values del select
+    status: clientToEdit?.status ? clientToEdit.status.toLowerCase() : "activo",
   });
 
   const [formData, setFormData] = useState(getInitialState());
@@ -145,8 +146,8 @@ export default function ClientFormModal({
                 value={formData.status}
                 onChange={handleChange}
               >
-                <option value="Activo">Activo</option>
-                <option value="Inactivo">Inactivo</option>
+                <option value="activo">Activo</option>
+                <option value="inactivo">Inactivo</option>
               </FormSelect>
             </div>
           </div>

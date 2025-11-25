@@ -1,5 +1,15 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, Sliders, X, CheckCircle, Eye, Download, Edit, Trash2 } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Sliders,
+  X,
+  CheckCircle,
+  Eye,
+  Download,
+  Edit,
+  Trash2,
+} from "lucide-react";
 import { invoiceService, leaseService } from "../services";
 
 import SearchBoxWithButton from "../components/ui/SearchBoxWithButton";
@@ -51,7 +61,7 @@ export default function Invoices() {
       setLoading(true);
       const [invoicesData, reservationsData] = await Promise.all([
         invoiceService.getAll(),
-        leaseService.getAll()
+        leaseService.getAll(),
       ]);
       setInvoices(invoicesData);
       setReservations(reservationsData);
@@ -104,7 +114,8 @@ export default function Invoices() {
       handleCloseFormModal();
     } catch (error) {
       console.error("Error submitting form:", error);
-      const errorMsg = error.response?.data?.detail || "Error al guardar la factura";
+      const errorMsg =
+        error.response?.data?.detail || "Error al guardar la factura";
       alert(errorMsg);
     }
   };
@@ -121,23 +132,23 @@ export default function Invoices() {
         await loadData();
       } catch (error) {
         console.error("Error marking invoice as paid:", error);
-        const errorMsg = error.response?.data?.detail || "Error al marcar como cobrada";
+        const errorMsg =
+          error.response?.data?.detail || "Error al marcar como cobrada";
         alert(errorMsg);
       }
     }
   };
 
   const handleDelete = async (invoiceId) => {
-    if (
-      window.confirm("¿Estás seguro de que quieres eliminar esta factura?")
-    ) {
+    if (window.confirm("¿Estás seguro de que quieres eliminar esta factura?")) {
       try {
         await invoiceService.delete(invoiceId);
         alert("Factura eliminada exitosamente");
         await loadData();
       } catch (error) {
         console.error("Error deleting invoice:", error);
-        const errorMsg = error.response?.data?.detail || "Error al eliminar la factura";
+        const errorMsg =
+          error.response?.data?.detail || "Error al eliminar la factura";
         alert(errorMsg);
       }
     }
@@ -180,7 +191,7 @@ export default function Invoices() {
           Gestión de Facturación
         </h1>
         <div className="flex gap-3">
-          <StyledPrimaryButton 
+          <StyledPrimaryButton
             onClick={handleOpenCreateModal}
             className="bg-blue-600 hover:bg-blue-700"
           >
@@ -292,8 +303,8 @@ export default function Invoices() {
                     >
                       <Eye className="w-5 h-5" />
                     </button>
-                    
-                    {invoice.status === "NO COBRADA" && (
+
+                    {invoice.status === "pendiente" && (
                       <>
                         <button
                           onClick={() => handleOpenEditModal(invoice)}
@@ -302,7 +313,7 @@ export default function Invoices() {
                         >
                           <Edit className="w-5 h-5" />
                         </button>
-                        
+
                         <button
                           onClick={() => handleMarkAsPaid(invoice)}
                           className="text-green-600 hover:text-green-800"
@@ -312,7 +323,7 @@ export default function Invoices() {
                         </button>
                       </>
                     )}
-                    
+
                     <button
                       onClick={() => handleDelete(invoice.id)}
                       className="text-red-600 hover:text-red-800"

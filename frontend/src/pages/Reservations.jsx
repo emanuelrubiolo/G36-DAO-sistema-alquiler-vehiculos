@@ -10,7 +10,13 @@ import {
   CheckCircle,
   Eye,
 } from "lucide-react";
-import { leaseService, vehicleService, invoiceService } from "../services";
+// AGREGADO: clientService
+import {
+  leaseService,
+  vehicleService,
+  invoiceService,
+  clientService,
+} from "../services";
 
 import ReservationFormModal from "../components/reservation/ReservationFormModal";
 import FinishRentalModal from "../components/rental/FinishRentalModal";
@@ -45,7 +51,11 @@ const StatusBadge = ({ status }) => {
 export default function Reservations() {
   const [searchTerm, setSearchTerm] = useState("");
   const [reservations, setReservations] = useState([]);
+
+  // Datos necesarios para el formulario
   const [vehicles, setVehicles] = useState([]);
+  const [clients, setClients] = useState([]); // AGREGADO: Estado para clientes
+
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view] = useState("table");
@@ -63,14 +73,18 @@ export default function Reservations() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [reservationsData, vehiclesData, invoicesData] = await Promise.all([
-        leaseService.getAll(),
-        vehicleService.getAll(),
-        invoiceService.getAll()
-      ]);
+      // AGREGADO: Carga de clientes
+      const [reservationsData, vehiclesData, invoicesData, clientsData] =
+        await Promise.all([
+          leaseService.getAll(),
+          vehicleService.getAll(),
+          invoiceService.getAll(),
+          clientService.getAll(), // Llamada al servicio
+        ]);
       setReservations(reservationsData);
       setVehicles(vehiclesData);
       setInvoices(invoicesData);
+      setClients(clientsData); // Seteo del estado
     } catch (error) {
       console.error("Error loading data:", error);
       alert("Error al cargar datos");
@@ -121,7 +135,8 @@ export default function Reservations() {
       handleCloseEditModal();
     } catch (error) {
       console.error("Error submitting form:", error);
-      const errorMsg = error.response?.data?.detail || "Error al guardar la reserva";
+      const errorMsg =
+        error.response?.data?.detail || "Error al guardar la reserva";
       alert(errorMsg);
     }
   };
@@ -156,7 +171,7 @@ export default function Reservations() {
     try {
       await leaseService.finish(data.rentalId, {
         kilometraje_fin: data.kilometraje_fin,
-        metodo_pago: data.metodo_pago
+        metodo_pago: data.metodo_pago,
       });
       alert("Alquiler finalizado exitosamente");
       await loadData();
@@ -168,14 +183,14 @@ export default function Reservations() {
     }
   };
 
-  const handleDelete = async (reservation) => {
+  const handleDelete = async (reservationId) => {
     if (
       window.confirm(
-        `¿Estás seguro de que quieres CANCELAR la reserva ID ${reservation.id}?`
+        `¿Estás seguro de que quieres CANCELAR la reserva ID ${reservationId}?`
       )
     ) {
       try {
-        await leaseService.delete(reservation.id);
+        await leaseService.delete(reservationId);
         alert("Reserva cancelada exitosamente");
         await loadData();
       } catch (error) {
@@ -324,7 +339,11 @@ export default function Reservations() {
                   onEdit={
                     res.status === "RESERVADO" ? handleOpenEditModal : null
                   }
-                  onDelete={res.status !== "FINALIZADO" ? handleDelete : null}
+                  onDelete={
+                    res.status !== "FINALIZADO"
+                      ? () => handleDelete(res.id)
+                      : null
+                  }
                 />
               </tr>
             )}
@@ -337,6 +356,9 @@ export default function Reservations() {
         onClose={handleCloseEditModal}
         onSubmit={handleEditSubmit}
         reservationToEdit={reservationToEdit}
+        // AGREGADO: Paso de datos al modal
+        clientsList={clients}
+        vehiclesList={vehicles}
       />
       <FinishRentalModal
         isOpen={isFinishModalOpen}

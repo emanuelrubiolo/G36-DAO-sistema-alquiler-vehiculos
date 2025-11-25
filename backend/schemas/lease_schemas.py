@@ -12,6 +12,7 @@ class LeaseCreate(BaseModel):
     date_time_start: datetime
     date_time_end: datetime
     start_kilometers: Optional[int] = None
+    
 
 
 class LeaseResponse(BaseModel):

@@ -111,7 +111,7 @@ def create_lease(lease: LeaseCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Vehicle is not available")
 
     # Validate client exists
-    client = db.query(Client).filter(Client.id == lease.clientId).first()
+    client = db.query(Client).filter(Client.id == lease.clientId and Client.status == "activo").first()    
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
 
@@ -134,7 +134,7 @@ def create_lease(lease: LeaseCreate, db: Session = Depends(get_db)):
         date_time_start=lease.date_time_start,
         date_time_end=lease.date_time_end,
         amount=amount,
-        state="creado",
+        #state=lease.state,
         date_create=date.today(),
         start_kilometers=lease.start_kilometers
     )
@@ -373,7 +373,7 @@ def delete_lease(id_alquiler: int, db: Session = Depends(get_db)):
     if not db_lease:
         raise HTTPException(status_code=404, detail="Lease not found")
 
-    if db_lease.state != "creado":
+    if db_lease.state == "finalizado":
         raise HTTPException(
             status_code=400,
             detail=f"Cannot delete lease in state '{db_lease.state}'. Only 'creado' leases can be deleted."

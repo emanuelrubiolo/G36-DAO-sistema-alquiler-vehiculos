@@ -25,7 +25,7 @@ export default function Incidents() {
       setLoading(true);
       const [incidentsData, rentalsData] = await Promise.all([
         incidentService.getAll(),
-        leaseService.getAll()
+        //leaseService.getAll()
       ]);
       setIncidents(incidentsData);
       setRentalsList(rentalsData);

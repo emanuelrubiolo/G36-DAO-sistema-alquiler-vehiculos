@@ -2,8 +2,8 @@ import { apiService } from "./api.service";
 
 export const incidentService = {
   // Get all incidents
-  getAll: async (skip = 0, limit = 100) => {
-    return await apiService.get(`/incidentes?skip=${skip}&limit=${limit}`);
+  getAll: async () => {
+    return await apiService.get(`/incidentes/`);
   },
 
   // Get incident by ID

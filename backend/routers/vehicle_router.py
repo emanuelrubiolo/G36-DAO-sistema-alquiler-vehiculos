@@ -108,12 +108,13 @@ def delete_vehicle(id_vehiculo: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Vehicle not found")
 
     # Baja lógica: solo si no está alquilado
-    if db_vehicle.estado == "alquilado":
+    if db_vehicle.estado == "no disponible":
         raise HTTPException(
             status_code=400,
             detail="Cannot delete a vehicle that is currently rented"
         )
 
-    db_vehicle.estado = "baja"
+    #db_vehicle.estado = "baja"
+    db.delete(db_vehicle)
     db.commit()
     return

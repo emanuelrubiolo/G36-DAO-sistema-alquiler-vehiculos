@@ -69,6 +69,12 @@ export default function Vehicles() {
     setIsFormModalOpen(true);
   };
 
+  // Nuevo: Manejador para abrir modal en modo edición
+  const handleOpenEditModal = (vehicle) => {
+    setVehicleToEdit(vehicle);
+    setIsFormModalOpen(true);
+  };
+
   const handleCloseModal = () => {
     setIsFormModalOpen(false);
     setVehicleToEdit(null);
@@ -77,7 +83,7 @@ export default function Vehicles() {
   const handleFormSubmit = async (formData) => {
     try {
       if (vehicleToEdit) {
-        // Lógica de edición (si fuera necesaria en el futuro)
+        // Lógica de edición
         await vehicleService.update(vehicleToEdit.id, formData);
         alert("Vehículo actualizado exitosamente");
       } else {
@@ -92,6 +98,24 @@ export default function Vehicles() {
       const errorMsg =
         error.response?.data?.detail || "Error al guardar el vehículo";
       alert(errorMsg);
+    }
+  };
+
+  // Nuevo: Manejador para eliminar vehículo
+  const handleDeleteVehicle = async (vehicleId) => {
+    if (
+      window.confirm("¿Estás seguro de que quieres dar de baja este vehículo?")
+    ) {
+      try {
+        await vehicleService.delete(vehicleId);
+        alert("Vehículo eliminado exitosamente");
+        await loadData();
+      } catch (error) {
+        console.error("Error deleting vehicle:", error);
+        const errorMsg =
+          error.response?.data?.detail || "Error al eliminar el vehículo";
+        alert(errorMsg);
+      }
     }
   };
 
@@ -166,7 +190,12 @@ export default function Vehicles() {
         )}
 
         <div className="flex-grow">
-          <VehicleList vehicles={filteredVehicles} view={view} />
+          <VehicleList
+            vehicles={filteredVehicles}
+            view={view}
+            onEdit={handleOpenEditModal}
+            onDelete={handleDeleteVehicle}
+          />
         </div>
       </div>
 

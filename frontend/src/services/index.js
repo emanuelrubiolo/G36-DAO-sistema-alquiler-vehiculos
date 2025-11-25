@@ -6,6 +6,7 @@ export { clientService } from "./client.service";
 export { vehicleService } from "./vehicle.service";
 export { maintenanceService } from "./maintenance.service";
 export { leaseService } from "./lease.service";
+export { rentalService } from "./rental.service";
 export { invoiceService } from "./invoice.service";
 export { incidentService } from "./incident.service";
 export { dashboardService } from "./dashboard.service";

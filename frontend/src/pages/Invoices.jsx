@@ -24,7 +24,7 @@ const InvoiceStatusBadge = ({ status }) => {
     </span>
   );
 };
-
+//todo: add create button
 export default function Invoices() {
   const [invoices, setInvoices] = useState([]);
   const [reservations, setReservations] = useState([]);

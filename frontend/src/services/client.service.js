@@ -2,8 +2,8 @@ import { apiService } from "./api.service";
 
 export const clientService = {
   // Get all clients
-  getAll: async (skip = 0, limit = 100) => {
-    return await apiService.get(`/clientes?skip=${skip}&limit=${limit}`);
+  getAll: async () => {
+    return await apiService.get(`/clientes/`);
   },
 
   // Get client by ID

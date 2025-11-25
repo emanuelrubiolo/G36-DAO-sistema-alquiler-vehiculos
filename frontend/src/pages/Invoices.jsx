@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import {
   Plus,
-  Search,
   Sliders,
   X,
   CheckCircle,
@@ -98,12 +97,6 @@ export default function Invoices() {
     setIsFormModalOpen(true);
   };
 
-  // Nota: handleOpenEditModal ya no se usa en la tabla, pero se mantiene por si se necesita internamente o en el futuro.
-  const handleOpenEditModal = (invoice) => {
-    setInvoiceToEdit(invoice);
-    setIsFormModalOpen(true);
-  };
-
   const handleCloseFormModal = () => {
     setIsFormModalOpen(false);
     setInvoiceToEdit(null);
@@ -162,6 +155,71 @@ export default function Invoices() {
     }
   };
 
+  // Función para exportar a CSV
+  const handleExportCSV = () => {
+    if (filteredInvoices.length === 0) {
+      alert("No hay datos para exportar.");
+      return;
+    }
+
+    // Encabezados del CSV
+    const headers = [
+      "ID Factura",
+      "ID Alquiler",
+      "Cliente",
+      "Vehículo",
+      "Fecha Emisión",
+      "Total",
+      "Estado",
+      "Método de Pago",
+    ];
+
+    // Filas de datos
+    const rows = filteredInvoices.map((invoice) => {
+      // Buscamos datos relacionados para completar el reporte
+      const relatedRental = reservations.find((r) => r.id === invoice.rentalId);
+      const issueDate = invoice.issuedDate || invoice.issueDate;
+      const vehicleInfo =
+        invoice.vehicleInfo || relatedRental?.vehicleName || "N/A";
+
+      // Función auxiliar para escapar comillas y manejar nulos
+      const escape = (value) => {
+        const stringValue = String(value || "");
+        if (stringValue.includes(",") || stringValue.includes('"')) {
+          return `"${stringValue.replace(/"/g, '""')}"`;
+        }
+        return stringValue;
+      };
+
+      return [
+        escape(invoice.id),
+        escape(invoice.rentalId),
+        escape(invoice.clientName),
+        escape(vehicleInfo),
+        escape(formatDate(issueDate)),
+        escape(invoice.total),
+        escape(invoice.status),
+        escape(invoice.paymentMethod),
+      ].join(",");
+    });
+
+    // Unir todo en un string
+    const csvContent = [headers.join(","), ...rows].join("\n");
+
+    // Crear Blob y descargar
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute(
+      "download",
+      `facturas_export_${new Date().toISOString().split("T")[0]}.csv`
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleOpenDetailModal = (invoice) => {
     const rental = reservations.find((r) => r.id === invoice.rentalId);
     setSelectedDetail({ invoice, rental });
@@ -187,7 +245,7 @@ export default function Invoices() {
   const columns = [
     { header: "ID", field: "id" },
     { header: "Cliente / Vehículo", field: "clientName" },
-    { header: "Periodo / KM", field: "period" }, // Nueva columna compuesta
+    { header: "Periodo / KM", field: "period" },
     { header: "Emisión", field: "issuedDate" },
     { header: "Total", field: "total", align: "right" },
     { header: "Estado", field: "status" },
@@ -207,7 +265,12 @@ export default function Invoices() {
             <Plus className="w-5 h-5" />
             <span>Nueva Factura</span>
           </StyledPrimaryButton>
-          <StyledPrimaryButton className="bg-green-600 hover:bg-green-700">
+
+          {/* Botón de Exportar con funcionalidad */}
+          <StyledPrimaryButton
+            onClick={handleExportCSV}
+            className="bg-green-600 hover:bg-green-700"
+          >
             <Download className="w-5 h-5" />
             <span>Exportar Datos</span>
           </StyledPrimaryButton>
@@ -265,13 +328,11 @@ export default function Invoices() {
             emptyMessage="No se encontraron facturas que coincidan con los filtros."
           >
             {(invoice) => {
-              // 1. Buscar alquiler relacionado para obtener datos faltantes (KM, fechas originales si leaseDates viene vacío)
               const relatedRental = reservations.find(
                 (r) => r.id === invoice.rentalId
               );
 
-              // 2. Normalizar datos (prioridad: dato en factura > dato en alquiler)
-              const issueDate = invoice.issuedDate || invoice.issueDate; // Manejo de inconsistencia de nombre
+              const issueDate = invoice.issuedDate || invoice.issueDate;
               const vehicleInfo =
                 invoice.vehicleInfo || relatedRental?.vehicleName || "N/A";
               const leasePeriod =
@@ -282,7 +343,6 @@ export default function Invoices() {
                     )}`
                   : "N/A");
 
-              // Datos de KM (solo en rental)
               const startKm =
                 relatedRental?.start_kilometers ||
                 relatedRental?.kilometraje_inicio ||
@@ -335,7 +395,6 @@ export default function Invoices() {
 
                   <td className="px-6 py-4 whitespace-nowrap text-right">
                     <div className="text-sm font-extrabold text-gray-900">
-                      {/* CORRECCIÓN: parseFloat asegura que sea número */}
                       {formatCurrency(parseFloat(invoice.total))}
                     </div>
                     <div className="text-xs text-gray-500">
@@ -360,6 +419,8 @@ export default function Invoices() {
                       {(invoice.status === "pendiente" ||
                         invoice.status === "NO COBRADA") && (
                         <>
+                          {/* Botón Editar eliminado como se solicitó */}
+
                           <button
                             onClick={() => handleMarkAsPaid(invoice)}
                             className="text-green-600 hover:text-green-800"

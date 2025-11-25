@@ -16,7 +16,7 @@ import {
 const menuItems = [
   { name: "Dashboard", icon: LayoutDashboard, path: "/" },
   { name: "Vehículos", icon: Car, path: "/vehiculos" },
-  { name: "Reservas", icon: CalendarCheck, path: "/reservas" },
+  // { name: "Reservas", icon: CalendarCheck, path: "/reservas" },
   { name: "Clientes", icon: Users, path: "/clientes" },
   { name: "Alquileres", icon: ClipboardList, path: "/alquileres" },
   { name: "Mantenimiento", icon: Wrench, path: "/mantenimiento" },

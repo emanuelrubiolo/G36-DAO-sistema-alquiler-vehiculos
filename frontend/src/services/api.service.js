@@ -18,7 +18,7 @@ apiClient.interceptors.request.use(
     // if (token) {
     //   config.headers.Authorization = `Bearer ${token}`;
     // }
-    
+
     console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
     return config;
   },
@@ -35,14 +35,14 @@ apiClient.interceptors.response.use(
   },
   (error) => {
     console.error("API Error:", error.response?.data || error.message);
-    
+
     // Handle specific error codes
     if (error.response?.status === 401) {
       // Unauthorized - could redirect to login
       console.warn("Unauthorized access - redirecting to login");
       // window.location.href = '/login';
     }
-    
+
     return Promise.reject(error);
   }
 );

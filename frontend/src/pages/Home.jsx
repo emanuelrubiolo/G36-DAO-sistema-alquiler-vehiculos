@@ -4,7 +4,6 @@ import {
   ClipboardList,
   Users,
   Car,
-  Filter,
   X,
   RefreshCw,
 } from "lucide-react";
@@ -12,25 +11,17 @@ import { dashboardService } from "../services";
 
 import KpiCard from "../components/dashboard/KpiCard";
 import MonthlyRevenueChart from "../components/dashboard/MonthlyRevenueChart";
-import MaintenanceAlertWidget from "../components/dashboard/MaintenanceAlertWidget";
 import FleetAvailabilityRadialChart from "../components/dashboard/FleetAvailabilityRadialChart";
 import PopularVehiclesChart from "../components/dashboard/PopularVehiclesChart";
 import QuarterlyRentalsChart from "../components/dashboard/QuarterlyRentalsChart";
 import InventoryBarChart from "../components/dashboard/InventoryBarChart";
 import ReportsTable from "../components/dashboard/ReportsTable";
 
-const filterDataByYear = (data, year) => {
-  if (year === "2025") {
-    return data.map((item) => ({ ...item, total: item.total * 1.15 }));
-  }
-  return data;
-};
-
 export default function Home() {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const [selectedYear, setSelectedYear] = useState("2025");
+  // Eliminado estado de año hardcodeado "2025"
   const [detailView, setDetailView] = useState(null);
   const [masterVehicleFilter, setMasterVehicleFilter] = useState("");
   const [monthRangeFilter, setMonthRangeFilter] = useState(null);
@@ -56,7 +47,7 @@ export default function Home() {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
-          <RefreshCw className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="text-lg font-semibold text-gray-700">
             Cargando dashboard...
           </p>
@@ -84,11 +75,12 @@ export default function Home() {
   const { kpis, monthlyRevenue, popularVehicles, detailedRentals } =
     dashboardData;
 
-  const filteredRevenue = filterDataByYear(monthlyRevenue, selectedYear);
+  // Usamos los datos directos del backend sin filtrado artificial por año
+  const revenueData = monthlyRevenue;
 
   const handleRevenueClick = (data) => {
     const month = data.month;
-    setDetailView(`Detalle de Facturación para ${month} ${selectedYear}`);
+    setDetailView(`Detalle de Facturación para ${month}`);
     setMasterVehicleFilter("");
     setMonthRangeFilter(null);
     console.log(`Abriendo detalle para ${month}...`);
@@ -167,8 +159,10 @@ export default function Home() {
       {monthRangeFilter && (
         <div className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-md shadow-md flex justify-between items-center transition-all duration-300">
           <p className="font-semibold text-orange-800">
-            Filtro de Rango de Meses Activo: **{monthRangeFilter.start}** a **
-            {monthRangeFilter.end}** (Se aplicará a la tabla de reportes).
+            Filtro de Rango de Meses Activo:{" "}
+            <strong>{monthRangeFilter.start}</strong> a{" "}
+            <strong>{monthRangeFilter.end}</strong> (Se aplicará a la tabla de
+            reportes).
           </p>
           <button
             onClick={clearMonthRangeFilter}
@@ -193,7 +187,7 @@ export default function Home() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-3">
           <MonthlyRevenueChart
-            data={filteredRevenue}
+            data={revenueData}
             onDataPointClick={handleRevenueClick}
             onRangeSelected={handleRangeSelection}
             currentMonthRange={monthRangeFilter}

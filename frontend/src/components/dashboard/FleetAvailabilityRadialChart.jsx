@@ -2,7 +2,7 @@ import React from "react";
 import { ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 
 export default function FleetAvailabilityRadialChart({ kpis }) {
-  const total = kpis.availableVehicles + kpis.totalRentals;
+  const total = kpis.totalVehicles;
   const availablePercent =
     total > 0 ? Math.round((kpis.availableVehicles / total) * 100) : 0;
 

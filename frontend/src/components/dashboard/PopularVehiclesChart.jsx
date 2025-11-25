@@ -9,7 +9,7 @@ import {
 } from "recharts";
 
 const HIGHLIGHT_COLOR = "#0A74DA";
-const PIE_COLORS = ["#4ECDC4", "#FF6B6B", "#FFC74F", "#0A74DA"];
+const PIE_COLORS = ["#4ECDC4", "#FF6B6B", "#FFC74F", "#0A74DA", "#A463F2"];
 
 export default function PopularVehiclesChart({
   data,
@@ -26,7 +26,7 @@ export default function PopularVehiclesChart({
           <PieChart>
             <Pie
               data={data}
-              dataKey="rentals"
+              dataKey="value" // CORRECCIÓN: Cambiado de "rentals" a "value"
               nameKey="name"
               cx="50%"
               cy="50%"

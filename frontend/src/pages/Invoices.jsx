@@ -9,6 +9,9 @@ import {
   Download,
   Edit,
   Trash2,
+  Car,
+  Calendar,
+  Gauge,
 } from "lucide-react";
 import { invoiceService, leaseService } from "../services";
 
@@ -22,12 +25,16 @@ import InvoiceFormModal from "../components/invoice/InvoiceFormModal";
 import { formatCurrency, formatDate } from "../utils/formatters";
 
 const InvoiceStatusBadge = ({ status }) => {
-  const isPaid = status === "COBRADA";
+  const isPaid = status === "COBRADA" || status === "pagada";
+  const isPending = status === "pendiente" || status === "NO COBRADA";
+
+  let colorClass = "bg-gray-100 text-gray-800";
+  if (isPaid) colorClass = "bg-green-100 text-green-800";
+  if (isPending) colorClass = "bg-yellow-100 text-yellow-800";
+
   return (
     <span
-      className={`px-2.5 py-0.5 inline-flex text-xs font-semibold rounded-full ${
-        isPaid ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
-      }`}
+      className={`px-2.5 py-0.5 inline-flex text-xs font-semibold rounded-full ${colorClass}`}
     >
       {status}
     </span>
@@ -63,8 +70,10 @@ export default function Invoices() {
         invoiceService.getAll(),
         leaseService.getAll(),
       ]);
-      setInvoices(invoicesData);
-      setReservations(reservationsData);
+
+      // Aseguramos que sean arrays
+      setInvoices(Array.isArray(invoicesData) ? invoicesData : []);
+      setReservations(Array.isArray(reservationsData) ? reservationsData : []);
     } catch (error) {
       console.error("Error loading data:", error);
       alert("Error al cargar datos");
@@ -76,8 +85,8 @@ export default function Invoices() {
   const filteredInvoices = invoices.filter((invoice) => {
     const matchesSearch =
       invoice.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      invoice.rentalId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      invoice.id?.toLowerCase().includes(searchTerm.toLowerCase());
+      invoice.rentalId?.toString().includes(searchTerm) ||
+      invoice.id?.toString().includes(searchTerm);
     const matchesStatus = statusFilter ? invoice.status === statusFilter : true;
     return matchesSearch && matchesStatus;
   });
@@ -177,9 +186,10 @@ export default function Invoices() {
   }
 
   const columns = [
-    { header: "Factura / Alquiler", field: "invoiceId" },
-    { header: "Cliente", field: "clientName" },
-    { header: "Fecha Emisión", field: "issueDate" },
+    { header: "ID", field: "id" },
+    { header: "Cliente / Vehículo", field: "clientName" },
+    { header: "Periodo / KM", field: "period" }, // Nueva columna compuesta
+    { header: "Emisión", field: "issuedDate" },
     { header: "Total", field: "total", align: "right" },
     { header: "Estado", field: "status" },
   ];
@@ -243,7 +253,7 @@ export default function Invoices() {
               >
                 <option value="">Todos los estados</option>
                 <option value="COBRADA">Cobrada</option>
-                <option value="NO COBRADA">No Cobrada</option>
+                <option value="pendiente">Pendiente</option>
               </select>
             </div>
           </div>
@@ -255,86 +265,131 @@ export default function Invoices() {
             data={filteredInvoices}
             emptyMessage="No se encontraron facturas que coincidan con los filtros."
           >
-            {(invoice) => (
-              <tr
-                key={invoice.id}
-                className="hover:bg-gray-50 transition-colors duration-150"
-              >
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">
-                    ID Factura: {invoice.id}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    ID Alquiler: {invoice.rentalId}
-                  </div>
-                </td>
+            {(invoice) => {
+              // 1. Buscar alquiler relacionado para obtener datos faltantes (KM, fechas originales si leaseDates viene vacío)
+              const relatedRental = reservations.find(
+                (r) => r.id === invoice.rentalId
+              );
 
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">
-                    {invoice.clientName}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {invoice.paymentMethod}
-                  </div>
-                </td>
+              // 2. Normalizar datos (prioridad: dato en factura > dato en alquiler)
+              const issueDate = invoice.issuedDate || invoice.issueDate; // Manejo de inconsistencia de nombre
+              const vehicleInfo =
+                invoice.vehicleInfo || relatedRental?.vehicleName || "N/A";
+              const leasePeriod =
+                invoice.leaseDates ||
+                (relatedRental
+                  ? `${formatDate(relatedRental.startDate)} - ${formatDate(
+                      relatedRental.endDate
+                    )}`
+                  : "N/A");
 
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-800">
-                    {formatDate(invoice.issueDate)}
-                  </div>
-                </td>
+              // Datos de KM (solo en rental)
+              const startKm =
+                relatedRental?.start_kilometers ||
+                relatedRental?.kilometraje_inicio ||
+                0;
+              const endKm =
+                relatedRental?.end_kilometers ||
+                relatedRental?.kilometraje_fin ||
+                (relatedRental?.status === "ALQUILADO" ? "En curso" : "---");
 
-                <td className="px-6 py-4 whitespace-nowrap text-right">
-                  <div className="text-sm font-extrabold text-gray-900">
-                    {formatCurrency(invoice.total)}
-                  </div>
-                </td>
+              return (
+                <tr
+                  key={invoice.id}
+                  className="hover:bg-gray-50 transition-colors duration-150"
+                >
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-bold text-gray-900">
+                      #{invoice.id}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      Ref. Alq: {invoice.rentalId}
+                    </div>
+                  </td>
 
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <InvoiceStatusBadge status={invoice.status} />
-                </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">
+                      {invoice.clientName}
+                    </div>
+                    <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                      <Car className="w-3 h-3" />
+                      {vehicleInfo}
+                    </div>
+                  </td>
 
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      onClick={() => handleOpenDetailModal(invoice)}
-                      className="text-blue-600 hover:text-blue-800"
-                      title="Ver detalles"
-                    >
-                      <Eye className="w-5 h-5" />
-                    </button>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-800 flex items-center gap-1">
+                      <Calendar className="w-3 h-3 text-gray-400" />
+                      {leasePeriod}
+                    </div>
+                    <div className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+                      <Gauge className="w-3 h-3 text-gray-400" />
+                      KM: {startKm} ➝ {endKm}
+                    </div>
+                  </td>
 
-                    {invoice.status === "pendiente" && (
-                      <>
-                        <button
-                          onClick={() => handleOpenEditModal(invoice)}
-                          className="text-yellow-600 hover:text-yellow-800"
-                          title="Editar factura"
-                        >
-                          <Edit className="w-5 h-5" />
-                        </button>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-800">
+                      {formatDate(issueDate)}
+                    </div>
+                  </td>
 
-                        <button
-                          onClick={() => handleMarkAsPaid(invoice)}
-                          className="text-green-600 hover:text-green-800"
-                          title="Marcar como cobrada"
-                        >
-                          <CheckCircle className="w-5 h-5" />
-                        </button>
-                      </>
-                    )}
+                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <div className="text-sm font-extrabold text-gray-900">
+                      {formatCurrency(invoice.total)}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {invoice.paymentMethod}
+                    </div>
+                  </td>
 
-                    <button
-                      onClick={() => handleDelete(invoice.id)}
-                      className="text-red-600 hover:text-red-800"
-                      title="Eliminar factura"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            )}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <InvoiceStatusBadge status={invoice.status} />
+                  </td>
+
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => handleOpenDetailModal(invoice)}
+                        className="text-blue-600 hover:text-blue-800"
+                        title="Ver detalles"
+                      >
+                        <Eye className="w-5 h-5" />
+                      </button>
+
+                      {(invoice.status === "pendiente" ||
+                        invoice.status === "NO COBRADA") && (
+                        <>
+                          <button
+                            onClick={() => handleOpenEditModal(invoice)}
+                            className="text-yellow-600 hover:text-yellow-800"
+                            title="Editar factura"
+                          >
+                            <Edit className="w-5 h-5" />
+                          </button>
+
+                          <button
+                            onClick={() => handleMarkAsPaid(invoice)}
+                            className="text-green-600 hover:text-green-800"
+                            title="Marcar como cobrada"
+                          >
+                            <CheckCircle className="w-5 h-5" />
+                          </button>
+                        </>
+                      )}
+
+                      <button
+                        onClick={() => handleDelete(invoice.id)}
+                        className="text-red-600 hover:text-red-800"
+                        title="Eliminar factura"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            }}
           </GenericTable>
         </div>
       </div>

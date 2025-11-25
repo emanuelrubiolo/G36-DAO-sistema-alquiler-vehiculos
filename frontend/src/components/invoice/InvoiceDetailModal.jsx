@@ -28,15 +28,27 @@ export default function InvoiceDetailModal({
 }) {
   if (!isOpen || !invoice) return null;
 
-  const { id, issueDate, total, paymentMethod, status } = invoice;
-  const {
-    clientName,
-    vehicleName,
-    startDate,
-    endDate,
-    kilometraje_inicio,
-    kilometraje_fin,
-  } = rental || {};
+  // 1. Normalización de datos de la FACTURA (backend a veces usa issuedDate o issueDate)
+  const { id, total, paymentMethod, status } = invoice;
+  const issueDate = invoice.issuedDate || invoice.issueDate;
+
+  // 2. Normalización de datos del ALQUILER
+  // Prioridad: Datos explícitos en factura > Datos del objeto rental > Defaults
+  const clientName = invoice.clientName || rental?.clientName || "N/A";
+  const vehicleName = invoice.vehicleInfo || rental?.vehicleName || "N/A";
+
+  // Fechas del alquiler (checkear nombres de propiedades backend vs frontend)
+  const start = rental?.startDate || rental?.date_time_start;
+  const end = rental?.endDate || rental?.date_time_end;
+  const period =
+    start && end
+      ? `${formatDate(start)} - ${formatDate(end)}`
+      : invoice.leaseDates || "N/A";
+
+  // Kilometraje (chequeamos start_kilometers backend vs kilometraje_inicio frontend)
+  // Usamos '??' para que el 0 sea un valor válido
+  const kmStart = rental?.start_kilometers ?? rental?.kilometraje_inicio;
+  const kmEnd = rental?.end_kilometers ?? rental?.kilometraje_fin;
 
   return (
     <div
@@ -63,6 +75,7 @@ export default function InvoiceDetailModal({
         </header>
 
         <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
+          {/* Sección Factura */}
           <div className="space-y-2">
             <h3 className="text-lg font-semibold text-gray-800">
               Datos de Facturación
@@ -72,36 +85,43 @@ export default function InvoiceDetailModal({
             <DetailRow label="Método de Pago" value={paymentMethod} />
             <DetailRow
               label="Monto Total"
-              value={`$${total.toLocaleString("es-AR")}`}
+              value={`$${parseFloat(total).toLocaleString("es-AR")}`}
             />
           </div>
 
-          {rental ? (
-            <div className="space-y-2">
-              <h3 className="text-lg font-semibold text-gray-800">
-                Detalles del Alquiler (ID: {rental.id})
-              </h3>
-              <DetailRow label="Cliente" value={clientName} />
-              <DetailRow label="Vehículo" value={vehicleName} />
-              <DetailRow
-                label="Período de Alquiler"
-                value={`${formatDate(startDate)} - ${formatDate(endDate)}`}
-              />
-              <DetailRow
-                label="Km Inicial"
-                value={`${kilometraje_inicio?.toLocaleString("es-AR")} km`}
-              />
-              <DetailRow
-                label="Km Final"
-                value={`${
-                  kilometraje_fin?.toLocaleString("es-AR") || "N/A"
-                } km`}
-              />
-            </div>
-          ) : (
-            <p className="text-sm text-red-500">
-              Error: No se encontraron los detalles del alquiler asociado (ID:{" "}
-              {invoice.rentalId}).
+          {/* Sección Alquiler */}
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold text-gray-800">
+              {rental
+                ? `Detalles del Alquiler (ID: ${rental.id})`
+                : "Información del Alquiler"}
+            </h3>
+            <DetailRow label="Cliente" value={clientName} />
+            <DetailRow label="Vehículo" value={vehicleName} />
+            <DetailRow label="Período de Alquiler" value={period} />
+            <DetailRow
+              label="Km Inicial"
+              value={
+                kmStart !== undefined && kmStart !== null
+                  ? `${kmStart.toLocaleString("es-AR")} km`
+                  : "N/A"
+              }
+            />
+            <DetailRow
+              label="Km Final"
+              value={
+                kmEnd !== undefined && kmEnd !== null
+                  ? `${kmEnd.toLocaleString("es-AR")} km`
+                  : "En curso / N/A"
+              }
+            />
+          </div>
+
+          {!rental && (
+            <p className="text-xs text-gray-400 italic mt-2">
+              * Nota: No se pudo vincular la información completa del alquiler
+              original en la base de datos actual. Mostrando datos históricos de
+              la factura.
             </p>
           )}
         </div>

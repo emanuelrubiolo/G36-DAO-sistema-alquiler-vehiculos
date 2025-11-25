@@ -7,22 +7,25 @@ from pydantic import BaseModel
 
 class MaintenanceCreate(BaseModel):
     vehicleId: int
-    employeeId: int
+    employeeId: Optional[int] = None
     type: str
     description: str
     cost: Decimal
+   # startDate: datetime
+    endDate: Optional[datetime] = None
 
 
 class MaintenanceResponse(BaseModel):
     id: int
     vehicleId: int
-    employeeId: int
+    employeeId: Optional[int] = None
     vehicleName: str
     startDate: datetime
     endDate: Optional[datetime] = None
     type: str
     description: str
     cost: Decimal
+    status: str
 
     class Config:
         from_attributes = True

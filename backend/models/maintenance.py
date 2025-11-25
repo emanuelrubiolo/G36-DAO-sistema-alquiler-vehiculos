@@ -17,6 +17,7 @@ class Maintenance(Base):
     type = Column(String(255))
     description = Column(String(255))
     cost = Column(DECIMAL(10,2))
+    status = Column(String(50), default="iniciado")    
 
     
     vehicle = relationship("Vehicle", back_populates="maintenances")

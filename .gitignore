@@ -2,9 +2,7 @@
 /.vscode
 /.venv
 __pycache__
-.env
 
 backend/certificados/client-cert.pem
 backend/certificados/client-key.pem
 backend/certificados/server-ca.pem
-backend/data/config.py

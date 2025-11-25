@@ -1,4 +1,3 @@
-# routers/leases.py
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -112,7 +111,7 @@ def create_lease(lease: LeaseCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Vehicle is not available")
 
     # Validate client exists
-    client = db.query(Client).filter(Client.id == lease.clientId).first()
+    client = db.query(Client).filter(Client.id == lease.clientId and Client.status == "activo").first()    
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
 
@@ -135,14 +134,16 @@ def create_lease(lease: LeaseCreate, db: Session = Depends(get_db)):
         date_time_start=lease.date_time_start,
         date_time_end=lease.date_time_end,
         amount=amount,
-        state="creado",
+        #state=lease.state,
         date_create=date.today(),
         start_kilometers=lease.start_kilometers
     )
 
+    vehicle.estado = "no disponible"
     db.add(db_lease)
     db.commit()
     db.refresh(db_lease)
+    db.refresh(vehicle)
 
     return {
         "id": db_lease.id,
@@ -366,3 +367,21 @@ def finalize_lease(id_alquiler: int, data: LeaseFinalize, db: Session = Depends(
         "start_kilometers": db_lease.start_kilometers,
         "end_kilometers": db_lease.end_kilometers,
     }
+
+@router.delete("/{id_alquiler}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_lease(id_alquiler: int, db: Session = Depends(get_db)):
+    """Elimina un alquiler si está en estado 'creado'."""
+    db_lease = db.query(Lease).filter(Lease.id == id_alquiler).first()
+    if not db_lease:
+        raise HTTPException(status_code=404, detail="Lease not found")
+
+    if db_lease.state == "finalizado":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot delete lease in state '{db_lease.state}'. Only 'creado' leases can be deleted."
+        )
+
+    db.delete(db_lease)
+    db.commit()
+
+    return

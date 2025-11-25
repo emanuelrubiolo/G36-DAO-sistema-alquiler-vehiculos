@@ -1,6 +1,5 @@
 import { X } from "lucide-react";
 import { useState, useEffect } from "react";
-import mockVehicles from "../../mocks/vehicles.json";
 import { useAuth } from "../../context/AuthContext";
 
 const FormInput = ({ label, id, ...props }) => (
@@ -14,7 +13,9 @@ const FormInput = ({ label, id, ...props }) => (
     <input
       id={id}
       {...props}
-      className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      className={`w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+        props.disabled ? "bg-gray-100 text-gray-500 cursor-not-allowed" : ""
+      }`}
     />
   </div>
 );
@@ -30,7 +31,9 @@ const FormSelect = ({ label, id, children, ...props }) => (
     <select
       id={id}
       {...props}
-      className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      className={`w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+        props.disabled ? "bg-gray-100 text-gray-500 cursor-not-allowed" : ""
+      }`}
     >
       {children}
     </select>
@@ -49,7 +52,9 @@ const FormTextarea = ({ label, id, ...props }) => (
       id={id}
       rows="3"
       {...props}
-      className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      className={`w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+        props.disabled ? "bg-gray-100 text-gray-500 cursor-not-allowed" : ""
+      }`}
     />
   </div>
 );
@@ -59,27 +64,55 @@ export default function MaintenanceFormModal({
   onClose,
   onSubmit,
   jobToEdit,
+  vehiclesList = [],
 }) {
   const { currentUser } = useAuth();
 
-  const [vehiclesList] = useState(mockVehicles);
+  // Helper para extraer YYYY-MM-DD de un ISO string (ej: "2025-11-25T19:15:44")
+  const formatDateForInput = (isoString) => {
+    if (!isoString) return "";
+    return isoString.split("T")[0];
+  };
 
-  const getInitialState = () => ({
-    vehicleId: jobToEdit?.vehicleId || vehiclesList[0]?.id || "",
-    startDate: jobToEdit?.startDate || new Date().toISOString().split("T")[0],
-    endDate: jobToEdit?.endDate || "",
-    type: jobToEdit?.type || "Preventivo",
-    description: jobToEdit?.description || "",
-    cost: jobToEdit?.cost || 0,
-  });
+  const getInitialState = () => {
+    // Normalizar el estado para que coincida con los valores del <select> (Title Case)
+    // Esto asegura que si el backend devuelve "finalizado", el select muestre "Finalizado"
+    let statusNormalized = jobToEdit?.status || "Iniciado";
+    if (statusNormalized.toLowerCase() === "finalizado")
+      statusNormalized = "Finalizado";
+    else if (statusNormalized.toLowerCase() === "iniciado")
+      statusNormalized = "Iniciado";
+
+    return {
+      vehicleId: jobToEdit?.vehicleId || vehiclesList[0]?.id || "",
+      startDate: jobToEdit?.startDate
+        ? formatDateForInput(jobToEdit.startDate)
+        : new Date().toISOString().split("T")[0],
+      endDate: jobToEdit?.endDate ? formatDateForInput(jobToEdit.endDate) : "",
+      type: jobToEdit?.type || "Preventivo",
+      description: jobToEdit?.description || "",
+      cost: jobToEdit?.cost || 0,
+      status: statusNormalized,
+    };
+  };
 
   const [formData, setFormData] = useState(getInitialState());
 
+  // Lógica para determinar si está finalizado (comparación flexible)
+  const isFinished =
+    jobToEdit?.status && jobToEdit.status.toLowerCase() === "finalizado";
   const isEditing = !!jobToEdit;
-  const title = isEditing ? "Editar Mantenimiento" : "Registrar Mantenimiento";
+
+  const title = isEditing
+    ? isFinished
+      ? "Detalle de Mantenimiento (Finalizado)"
+      : "Editar Mantenimiento"
+    : "Registrar Mantenimiento";
 
   useEffect(() => {
-    setFormData(getInitialState());
+    if (isOpen) {
+      setFormData(getInitialState());
+    }
   }, [jobToEdit, isOpen]);
 
   const handleChange = (e) => {
@@ -92,8 +125,13 @@ export default function MaintenanceFormModal({
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (isFinished) {
+      onClose();
+      return;
+    }
+
     const selectedVehicle = vehiclesList.find(
-      (v) => v.id === formData.vehicleId
+      (v) => v.id == formData.vehicleId
     );
 
     const dataToSubmit = {
@@ -102,7 +140,7 @@ export default function MaintenanceFormModal({
         ? `${selectedVehicle.brand} ${selectedVehicle.model}`
         : "N/A",
       id_empleado: currentUser?.id,
-      fecha_creacion: new Date().toISOString(),
+      fecha_creacion: jobToEdit?.fecha_creacion || new Date().toISOString(),
     };
 
     onSubmit(dataToSubmit);
@@ -138,6 +176,7 @@ export default function MaintenanceFormModal({
               value={formData.vehicleId}
               onChange={handleChange}
               required
+              disabled={isEditing || isFinished}
             >
               <option value="" disabled>
                 Seleccione un vehículo
@@ -155,10 +194,22 @@ export default function MaintenanceFormModal({
               name="type"
               value={formData.type}
               onChange={handleChange}
+              disabled={isFinished}
             >
               <option value="Preventivo">Preventivo</option>
               <option value="Correctivo">Correctivo</option>
-              <option value="En progreso">En progreso</option>
+            </FormSelect>
+
+            <FormSelect
+              label="Estado"
+              id="status"
+              name="status"
+              value={formData.status}
+              onChange={handleChange}
+              disabled={isFinished}
+            >
+              <option value="Iniciado">Iniciado</option>
+              <option value="Finalizado">Finalizado</option>
             </FormSelect>
 
             <FormInput
@@ -169,6 +220,7 @@ export default function MaintenanceFormModal({
               step="0.01"
               value={formData.cost}
               onChange={handleChange}
+              disabled={isFinished}
             />
 
             <FormInput
@@ -179,7 +231,9 @@ export default function MaintenanceFormModal({
               value={formData.startDate}
               onChange={handleChange}
               required
+              disabled={true}
             />
+
             <FormInput
               label="Fecha de Fin (Opcional)"
               id="endDate"
@@ -187,6 +241,7 @@ export default function MaintenanceFormModal({
               type="date"
               value={formData.endDate}
               onChange={handleChange}
+              disabled={isFinished}
             />
 
             <div className="md:col-span-2">
@@ -197,6 +252,7 @@ export default function MaintenanceFormModal({
                 value={formData.description}
                 onChange={handleChange}
                 placeholder="Detalles del trabajo realizado..."
+                disabled={isFinished}
               />
             </div>
           </div>
@@ -207,14 +263,16 @@ export default function MaintenanceFormModal({
               onClick={onClose}
               className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50"
             >
-              Cancelar
+              {isFinished ? "Cerrar" : "Cancelar"}
             </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-sm hover:bg-blue-700"
-            >
-              {isEditing ? "Guardar Cambios" : "Registrar"}
-            </button>
+            {!isFinished && (
+              <button
+                type="submit"
+                className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-sm hover:bg-blue-700"
+              >
+                {isEditing ? "Guardar Cambios" : "Registrar"}
+              </button>
+            )}
           </footer>
         </form>
       </div>

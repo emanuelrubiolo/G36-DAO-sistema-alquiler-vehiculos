@@ -1,7 +1,5 @@
 import { X } from "lucide-react";
 import { useState, useEffect } from "react";
-import mockClients from "../../mocks/clients.json";
-import mockVehicles from "../../mocks/vehicles.json";
 import { useAuth } from "../../context/AuthContext";
 
 const FormSelect = ({ label, id, children, ...props }) => (
@@ -15,7 +13,7 @@ const FormSelect = ({ label, id, children, ...props }) => (
     <select
       id={id}
       {...props}
-      className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
     >
       {children}
     </select>
@@ -32,23 +30,29 @@ const FormInput = ({ label, id, ...props }) => (
     <input
       id={id}
       {...props}
-      className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
     />
   </div>
 );
 
-export default function ReservationFormModal({ isOpen, onClose, onSubmit }) {
+export default function ReservationFormModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  clientsList = [],
+  vehiclesList = [],
+}) {
   const { currentUser } = useAuth();
-  const [clientsList] = useState(mockClients);
-  const [vehiclesList] = useState(mockVehicles);
 
+  // FILTRO: Solo vehículos con estado "disponible" (insensible a mayúsculas)
   const reservableVehicles = vehiclesList.filter(
-    (v) => v.estado !== "EN_MANTENIMIENTO"
+    (v) => v.estado && v.estado.toLowerCase() === "disponible"
   );
 
   const getVehicleMileage = (vehicleId) => {
     if (vehicleId) {
-      const vehicle = vehiclesList.find((v) => v.id === vehicleId);
+      // Usamos == para comparar string (del select) con number (del objeto)
+      const vehicle = vehiclesList.find((v) => v.id == vehicleId);
       return vehicle?.kilometraje_actual || 0;
     }
     const defaultVehicle = reservableVehicles[0];
@@ -62,7 +66,7 @@ export default function ReservationFormModal({ isOpen, onClose, onSubmit }) {
       vehicleId: defaultVehicleId,
       startDate: "",
       endDate: "",
-      status: "RESERVADO",
+      status: "creado", // Estado inicial para reserva
       kilometraje_inicio: getVehicleMileage(defaultVehicleId),
     };
   };
@@ -74,7 +78,8 @@ export default function ReservationFormModal({ isOpen, onClose, onSubmit }) {
     const { startDate, endDate, vehicleId } = formData;
 
     if (startDate && endDate && vehicleId) {
-      const vehicle = vehiclesList.find((v) => v.id === vehicleId);
+      // Usamos == para búsqueda segura
+      const vehicle = vehiclesList.find((v) => v.id == vehicleId);
       const pricePerDay = vehicle?.pricePerDay || 0;
 
       const start = new Date(startDate);
@@ -117,28 +122,46 @@ export default function ReservationFormModal({ isOpen, onClose, onSubmit }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const selectedClient = clientsList.find((c) => c.id === formData.clientId);
-    const selectedVehicle = vehiclesList.find(
-      (v) => v.id === formData.vehicleId
-    );
 
-    const vehicleName = selectedVehicle
-      ? `${selectedVehicle.brand} ${selectedVehicle.model}`
-      : "N/A";
+    // 1. Obtener ID de empleado de forma segura
+    let safeEmployeeId = 0;
+    if (currentUser) {
+      if (currentUser.employeeId) {
+        safeEmployeeId = parseInt(currentUser.employeeId, 10);
+      } else if (currentUser.id) {
+        safeEmployeeId = parseInt(currentUser.id, 10);
+      }
+    }
+    if (isNaN(safeEmployeeId)) safeEmployeeId = 0;
 
+    // 2. Validar Kilometraje Inicial
+    let startKm = parseInt(formData.kilometraje_inicio, 10);
+    if (isNaN(startKm)) {
+      startKm = getVehicleMileage(formData.vehicleId);
+    } else {
+      startKm = Math.floor(startKm);
+    }
+
+    // 3. Construir payload BASE estricto según el Schema del backend
+    // { clientId, vehicleId, employeeId, date_time_start, date_time_end, start_kilometers }
     const dataToSubmit = {
-      ...formData,
-      clientName: selectedClient?.name || "N/A",
-      vehicleName: vehicleName,
-      total: estimatedCost,
-      id_empleado: currentUser?.id,
-
-      fecha_creacion: new Date().toISOString(),
-      fecha_confirmacion: null,
-      fecha_cancelacion: null,
+      clientId: parseInt(formData.clientId, 10),
+      vehicleId: parseInt(formData.vehicleId, 10),
+      employeeId: safeEmployeeId,
+      date_time_start: new Date(formData.startDate).toISOString(),
+      date_time_end: new Date(formData.endDate).toISOString(),
+      start_kilometers: startKm,
+      // NOTA: No enviamos 'status' ni fechas de creación/confirmación manuales
+      // para evitar error 500. El backend asignará el estado inicial (generalmente 'creado').
     };
 
-    console.log("Registrando reserva:", dataToSubmit);
+    if (safeEmployeeId === 0) {
+      console.warn(
+        "Advertencia: employeeId es 0. Esto podría causar un error 404 si el backend valida existencia."
+      );
+    }
+
+    console.log("Registrando reserva (Schema Validado):", dataToSubmit);
     onSubmit(dataToSubmit);
     onClose();
   };
@@ -194,18 +217,25 @@ export default function ReservationFormModal({ isOpen, onClose, onSubmit }) {
               <option value="" disabled>
                 Seleccione un vehículo
               </option>
-              {vehiclesList.map((vehicle) => (
-                <option
-                  key={vehicle.id}
-                  value={vehicle.id}
-                  disabled={vehicle.estado !== "DISPONIBLE"}
-                >
-                  {vehicle.brand} {vehicle.model}
-                  {vehicle.estado !== "DISPONIBLE"
-                    ? ` (${vehicle.estado})`
-                    : ` ($${vehicle.pricePerDay}/día)`}
-                </option>
-              ))}
+              {vehiclesList.map((vehicle) => {
+                // Validación estricta del estado disponible
+                const isAvailable =
+                  vehicle.estado &&
+                  vehicle.estado.toLowerCase() === "disponible";
+
+                return (
+                  <option
+                    key={vehicle.id}
+                    value={vehicle.id}
+                    disabled={!isAvailable}
+                  >
+                    {vehicle.brand} {vehicle.model}
+                    {!isAvailable
+                      ? ` (${vehicle.estado})`
+                      : ` ($${vehicle.pricePerDay}/día)`}
+                  </option>
+                );
+              })}
             </FormSelect>
 
             <FormInput
@@ -233,8 +263,9 @@ export default function ReservationFormModal({ isOpen, onClose, onSubmit }) {
               name="status"
               value={formData.status}
               onChange={handleChange}
+              disabled // Deshabilitado porque siempre nace como 'creado'
             >
-              <option value="RESERVADO">Reservado</option>
+              <option value="creado">Creado</option>
             </FormSelect>
 
             <FormInput
@@ -247,7 +278,6 @@ export default function ReservationFormModal({ isOpen, onClose, onSubmit }) {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm bg-gray-100 text-gray-600"
             />
 
-            {}
             <div className="md:col-span-2">
               <FormInput
                 label="Costo Estimado"

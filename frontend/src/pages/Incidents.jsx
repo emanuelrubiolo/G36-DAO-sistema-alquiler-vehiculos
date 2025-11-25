@@ -1,27 +1,58 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Search, Sliders, X } from "lucide-react";
-import mockIncidents from "../mocks/incidents.json";
+import { incidentService, leaseService } from "../services";
 import IncidentList from "../components/incident/IncidentList";
 import IncidentFormModal from "../components/incident/IncidentFormModal";
-import mockRentals from "../mocks/reservations.json";
 import SearchBoxWithButton from "../components/ui/SearchBoxWithButton";
 import StyledPrimaryButton from "../components/ui/StyledPrimaryButton";
 
 export default function Incidents() {
-  const [incidents, setIncidents] = useState(mockIncidents);
-  const [rentalsList] = useState(mockRentals);
+  const [incidents, setIncidents] = useState([]);
+  const [rentalsList, setRentalsList] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  // Estado para el filtro de tipo
+  const [typeFilter, setTypeFilter] = useState("");
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [incidentToEdit, setIncidentToEdit] = useState(null);
   const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false);
 
-  const filteredIncidents = incidents.filter(
-    (incident) =>
-      incident.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      incident.vehicleName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      incident.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [incidentsData, rentalsData] = await Promise.all([
+        incidentService.getAll(),
+        leaseService.getAll(),
+      ]);
+
+      setIncidents(Array.isArray(incidentsData) ? incidentsData : []);
+      setRentalsList(Array.isArray(rentalsData) ? rentalsData : []);
+    } catch (error) {
+      console.error("Error loading data:", error);
+      alert("Error al cargar datos");
+      setIncidents([]);
+      setRentalsList([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredIncidents = incidents.filter((incident) => {
+    const matchesSearch =
+      incident.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      incident.vehicleName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      incident.description?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesType = typeFilter ? incident.type === typeFilter : true;
+
+    return matchesSearch && matchesType;
+  });
 
   const handleSearchExecution = () => {
     console.log("Ejecutando búsqueda de incidentes con:", searchTerm);
@@ -42,30 +73,52 @@ export default function Incidents() {
     setIncidentToEdit(null);
   };
 
-  const handleFormSubmit = (formData) => {
-    if (incidentToEdit) {
-      setIncidents((prev) =>
-        prev.map((i) =>
-          i.id === incidentToEdit.id ? { ...incidentToEdit, ...formData } : i
-        )
-      );
-    } else {
-      const newIncident = {
-        id: `i${new Date().getTime()}`,
-        ...formData,
-      };
-      setIncidents((prev) => [newIncident, ...prev]);
+  const handleFormSubmit = async (formData) => {
+    try {
+      if (incidentToEdit) {
+        await incidentService.update(incidentToEdit.id, formData);
+        alert("Incidente actualizado exitosamente");
+      } else {
+        await incidentService.create(formData);
+        alert("Incidente registrado exitosamente");
+      }
+      await loadData();
+      handleCloseModal();
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      const errorMsg =
+        error.response?.data?.detail || "Error al guardar el incidente";
+      alert(errorMsg);
     }
-    handleCloseModal();
   };
 
-  const handleDelete = (incidentId) => {
+  const handleDelete = async (incidentId) => {
     if (
       window.confirm("¿Estás seguro de que quieres eliminar este incidente?")
     ) {
-      setIncidents((prev) => prev.filter((i) => i.id !== incidentId));
+      try {
+        await incidentService.delete(incidentId);
+        alert("Incidente eliminado exitosamente");
+        await loadData();
+      } catch (error) {
+        console.error("Error deleting incident:", error);
+        const errorMsg =
+          error.response?.data?.detail || "Error al eliminar el incidente";
+        alert(errorMsg);
+      }
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Cargando incidentes...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <section className="space-y-6">
@@ -109,17 +162,22 @@ export default function Incidents() {
 
             <div className="space-y-4">
               <div className="font-semibold text-gray-700">Tipo:</div>
-              <div className="h-16 bg-gray-100 rounded flex items-center justify-center text-sm text-gray-500">
-                (Daño / Multa)
-              </div>
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Todos los tipos</option>
+                <option value="Daño">Daño</option>
+                <option value="Multa">Multa</option>
+              </select>
             </div>
           </div>
         )}
 
-        {}
         <div className="flex-grow">
           <IncidentList
-            incidents={filteredIncidents ?? []}
+            incidents={filteredIncidents}
             onEdit={handleOpenEditModal}
             onDelete={handleDelete}
           />

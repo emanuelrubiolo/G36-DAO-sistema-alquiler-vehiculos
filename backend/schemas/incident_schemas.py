@@ -7,7 +7,7 @@ from decimal import Decimal
 
 class IncidentCreate(BaseModel):
     rentalId: int
-    employeeId: int
+    #employeeId: int
     type: str = Field(..., min_length=1, max_length=255)
     description: str = Field(..., min_length=1, max_length=255)
     cost: Decimal = Field(..., ge=0)
@@ -16,7 +16,7 @@ class IncidentCreate(BaseModel):
 class IncidentResponse(BaseModel):
     id: int
     rentalId: int
-    employeeId: int
+    employeeId: Optional[int]
     clientName: str
     vehicleName: str
     type: str

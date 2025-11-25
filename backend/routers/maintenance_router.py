@@ -11,8 +11,8 @@ from backend.models.employee import Employee
 from backend.schemas.maintenance_schemas import MaintenanceCreate, MaintenanceResponse, MaintenanceUpdate
 
 router = APIRouter(
-    prefix="/mantenimientos",
-    tags=["mantenimientos"],
+    prefix="/mantenimiento",
+    tags=["mantenimiento"],
 )
 
 
@@ -51,9 +51,9 @@ def create_maintenance(maintenance: MaintenanceCreate, db: Session = Depends(get
         raise HTTPException(status_code=404, detail="Vehicle not found")
 
     # Verificar que el empleado existe
-    employee = db.query(Employee).filter(Employee.id == maintenance.employeeId).first()
-    if not employee:
-        raise HTTPException(status_code=404, detail="Employee not found")
+    #employee = db.query(Employee).filter(Employee.id == maintenance.employeeId).first()
+    #if not employee:
+    #    raise HTTPException(status_code=404, detail="Employee not found")
 
     # Verificar que el vehículo no esté alquilado
     if vehicle.estado == "alquilado":
@@ -62,10 +62,10 @@ def create_maintenance(maintenance: MaintenanceCreate, db: Session = Depends(get
     # Crear mantenimiento
     db_maintenance = Maintenance(
         vehicleId=maintenance.vehicleId,
-        employeeId=maintenance.employeeId,
+    #    employeeId=maintenance.employeeId,
         vehicleName=f"{vehicle.brand} {vehicle.model}",  # Auto-generar nombre
         startDate=datetime.now(),
-        endDate=None,
+        endDate=maintenance.endDate,
         type=maintenance.type,
         description=maintenance.description,
         cost=maintenance.cost
@@ -87,7 +87,7 @@ def finish_maintenance(id_mantenimiento: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Maintenance not found")
 
     # Verificar que no esté ya finalizado
-    if maintenance.endDate is not None:
+    if maintenance.status == "finalizado":
         raise HTTPException(status_code=400, detail="Maintenance already finished")
 
     # Finalizar mantenimiento
@@ -97,7 +97,18 @@ def finish_maintenance(id_mantenimiento: int, db: Session = Depends(get_db)):
     vehicle = db.query(Vehicle).filter(Vehicle.id == maintenance.vehicleId).first()
     if vehicle:
         vehicle.estado = "disponible"
+    maintenance.status = "finalizado"
 
     db.commit()
     db.refresh(maintenance)
     return maintenance
+
+@router.delete("/{id_mantenimiento}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_maintenance(id_mantenimiento: int, db: Session = Depends(get_db)):
+    maintenance = db.query(Maintenance).filter(Maintenance.id == id_mantenimiento).first()
+    if not maintenance:
+        raise HTTPException(status_code=404, detail="Maintenance not found")
+
+    db.delete(maintenance)
+    db.commit()
+    return

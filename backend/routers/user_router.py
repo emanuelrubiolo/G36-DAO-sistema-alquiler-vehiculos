@@ -49,6 +49,7 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
         id_employee=user.employeeId,
         username=user.username,
         password=hashed_password,  # Store hashed, not plain text
+        #password=user.password
     )
     db.add(db_user)
     db.commit()
@@ -74,6 +75,7 @@ def update_user_password(id_usuario: int, user: UserUpdatePassword, db: Session 
         "username": db_user.username,
         "employeeName": db_user.employee.name if db_user.employee else None
     }
+
 @router.patch("/{id_usuario}", response_model=UserResponse)
 def update_user_employee(id_usuario: int, user: UserUpdate, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.id == id_usuario).first()

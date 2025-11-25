@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
   Plus,
@@ -9,7 +9,7 @@ import {
   X,
   Sliders,
 } from "lucide-react";
-import mockClients from "../mocks/clients.json";
+import { clientService } from "../services";
 
 import ClientFormModal from "../components/client/ClientFormModal";
 import ClientCard from "../components/client/ClientCard";
@@ -29,7 +29,10 @@ const getToggleClasses = (currentView, buttonView) => {
 };
 
 const StatusBadge = ({ status }) => {
-  const isActive = status === "Activo";
+  // Normalizamos a minúsculas para asegurar que "Activo", "activo" o "ACTIVO" funcionen
+  const normalizedStatus = status ? status.toLowerCase() : "";
+  const isActive = normalizedStatus === "activo";
+
   return (
     <span
       className={`px-2.5 py-0.5 inline-flex text-xs font-semibold rounded-full ${
@@ -43,18 +46,51 @@ const StatusBadge = ({ status }) => {
 
 export default function Clients() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [clients, setClients] = useState(mockClients);
+  // Estado para el filtro de activo/inactivo
+  const [statusFilter, setStatusFilter] = useState("");
+
+  const [clients, setClients] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [clientToEdit, setClientToEdit] = useState(null);
   const [view, setView] = useState("grid");
   const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false);
 
-  const filteredClients = clients.filter(
-    (client) =>
-      client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.dni.includes(searchTerm)
-  );
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const data = await clientService.getAll();
+      // Protección: Aseguramos que data sea un array antes de setearlo
+      setClients(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Error loading clients:", error);
+      alert("Error al cargar clientes");
+      setClients([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredClients = clients.filter((client) => {
+    const term = searchTerm.toLowerCase();
+
+    // 1. Filtro por texto (Nombre, Email, DNI)
+    const matchesSearch =
+      client.name?.toLowerCase().includes(term) ||
+      client.email?.toLowerCase().includes(term) ||
+      client.dni?.includes(term);
+
+    // 2. Filtro por estado (Activo/Inactivo)
+    const matchesStatus = statusFilter
+      ? client.status?.toLowerCase() === statusFilter.toLowerCase()
+      : true;
+
+    return matchesSearch && matchesStatus;
+  });
 
   const handleSearchExecution = () => {
     console.log("Ejecutando búsqueda de clientes con:", searchTerm);
@@ -75,37 +111,74 @@ export default function Clients() {
     setClientToEdit(null);
   };
 
-  const handleFormSubmit = (formData) => {
-    if (clientToEdit) {
-      setClients((prevClients) =>
-        prevClients.map((c) =>
-          c.id === clientToEdit.id ? { ...clientToEdit, ...formData } : c
-        )
-      );
-    } else {
-      const newClient = {
-        id: `c${new Date().getTime()}`,
-        ...formData,
-      };
-      setClients((prevClients) => [newClient, ...prevClients]);
+  const handleFormSubmit = async (formData) => {
+    try {
+      if (clientToEdit) {
+        // 1. Actualizar datos generales (PUT)
+        await clientService.update(clientToEdit.id, formData);
+
+        // 2. Verificar si el estado cambió para llamar al endpoint PATCH específico
+        const currentStatus = clientToEdit.status
+          ? clientToEdit.status.toLowerCase()
+          : "";
+        const newStatus = formData.status ? formData.status.toLowerCase() : "";
+
+        if (currentStatus !== newStatus) {
+          console.log(`Actualizando estado de ${currentStatus} a ${newStatus}`);
+          await clientService.updateStatus(clientToEdit.id, formData.status);
+        }
+
+        alert("Cliente actualizado exitosamente");
+      } else {
+        await clientService.create(formData);
+        alert("Cliente creado exitosamente");
+      }
+      await loadData();
+      handleCloseModal();
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      const errorMsg =
+        error.response?.data?.detail || "Error al guardar el cliente";
+      alert(errorMsg);
     }
-    handleCloseModal();
   };
 
-  const handleDeleteClient = (client) => {
+  const handleDeleteClient = async (clientData) => {
+    // La tabla devuelve el objeto completo, nos aseguramos de obtener el ID
+    const clientId = clientData.id || clientData;
+    const clientName = clientData.name || "este cliente";
+
     if (
-      window.confirm(`¿Estás seguro de que quieres eliminar a ${client.name}?`)
+      window.confirm(`¿Estás seguro de que quieres eliminar a ${clientName}?`)
     ) {
-      setClients((prevClients) =>
-        prevClients.filter((c) => c.id !== client.id)
-      );
+      try {
+        await clientService.delete(clientId);
+        alert("Cliente eliminado exitosamente");
+        await loadData();
+      } catch (error) {
+        console.error("Error deleting client:", error);
+        const errorMsg =
+          error.response?.data?.detail || "Error al eliminar el cliente";
+        alert(errorMsg);
+      }
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Cargando clientes...</p>
+        </div>
+      </div>
+    );
+  }
 
   const columns = [
     { header: "Nombre", field: "name" },
     { header: "DNI", field: "dni" },
-    { header: "Contacto", field: "contact" },
+    { header: "Contacto", field: "phone" },
     { header: "Estado", field: "status" },
   ];
 
@@ -120,7 +193,6 @@ export default function Clients() {
           key={client.id}
           className="hover:bg-gray-50 transition-colors duration-150"
         >
-          {}
           <td className="px-6 py-4 whitespace-nowrap">
             <div className="text-sm font-medium text-gray-900">
               {client.name}
@@ -128,24 +200,20 @@ export default function Clients() {
             <div className="text-sm text-gray-500">{client.email}</div>
           </td>
 
-          {}
           <td className="px-6 py-4 whitespace-nowrap">
             <div className="text-sm font-medium text-gray-900">
               {client.dni}
             </div>
           </td>
 
-          {}
           <td className="px-6 py-4 whitespace-nowrap">
             <div className="text-sm text-gray-800">{client.phone}</div>
           </td>
 
-          {}
           <td className="px-6 py-4 whitespace-nowrap">
             <StatusBadge status={client.status} />
           </td>
 
-          {}
           <TableActionCell
             data={client}
             onEdit={handleOpenEditModal}
@@ -176,13 +244,14 @@ export default function Clients() {
         <h1 className="text-3xl font-bold text-gray-900">
           Gestión de Clientes
         </h1>
-        <StyledPrimaryButton onClick={handleOpenCreateModal}>
-          <Plus className="w-5 h-5" />
-          <span>Agregar Cliente</span>
-        </StyledPrimaryButton>
+        <div className="flex gap-3">
+          <StyledPrimaryButton onClick={handleOpenCreateModal}>
+            <Plus className="w-5 h-5" />
+            <span>Agregar Cliente</span>
+          </StyledPrimaryButton>
+        </div>
       </header>
 
-      {}
       <div className="flex gap-6">
         <SearchBoxWithButton
           searchTerm={searchTerm}
@@ -196,9 +265,7 @@ export default function Clients() {
         />
       </div>
 
-      {}
       <div className="mt-6 flex gap-6">
-        {}
         {isAdvancedFilterOpen && (
           <div className="w-64 bg-white rounded-xl shadow-lg border border-gray-100 p-5 shrink-0 transition-all duration-300">
             <div className="flex justify-between items-center mb-4 pb-2 border-b">
@@ -218,14 +285,20 @@ export default function Clients() {
               <div className="font-semibold text-gray-700">
                 Estado de Cuenta:
               </div>
-              <div className="h-16 bg-gray-100 rounded flex items-center justify-center text-sm text-gray-500">
-                (Dropdown de Estado Mock)
-              </div>
+              {/* Selector Funcional de Estado */}
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Todos</option>
+                <option value="activo">Activo</option>
+                <option value="inactivo">Inactivo</option>
+              </select>
             </div>
           </div>
         )}
 
-        {}
         <div className="flex-grow">
           <div className="bg-white rounded-xl border border-gray-100 shadow-xl overflow-hidden">
             {view === "table" && <TableView />}

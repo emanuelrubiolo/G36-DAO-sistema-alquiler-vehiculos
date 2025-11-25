@@ -37,11 +37,14 @@ def get_dashboard_data(db: Session = Depends(get_db)):
         Vehicle.estado == "disponible"
     ).scalar() or 0
     
+    total_vehicles = db.query(func.count(Vehicle.id)).filter(Vehicle.estado != "baja").scalar() or 0
+
     kpis = {
         "totalRevenue": float(total_revenue),
         "totalRentals": total_rentals,
         "activeClients": active_clients,
-        "availableVehicles": available_vehicles
+        "availableVehicles": available_vehicles,
+        "totalVehicles": total_vehicles
     }
     
     # Ingresos de cada mes del anio actual

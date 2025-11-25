@@ -8,7 +8,8 @@ const formatDate = (dateString) => {
 };
 
 const TypeBadge = ({ type }) => {
-  const isDamage = type === "Daño";
+  // Normalización para evitar errores con mayúsculas/minúsculas
+  const isDamage = type && type.toLowerCase().includes("daño");
   return (
     <span
       className={`px-2.5 py-0.5 inline-flex text-xs font-semibold rounded-full ${
@@ -20,11 +21,16 @@ const TypeBadge = ({ type }) => {
   );
 };
 
+// CORRECCIÓN: Función robusta que acepta strings numéricos
 const formatCurrency = (amount) => {
-  if (typeof amount === "number") {
-    return `$${amount.toLocaleString("es-AR", { minimumFractionDigits: 2 })}`;
+  const num = parseFloat(amount);
+  if (!isNaN(num)) {
+    return `$${num.toLocaleString("es-AR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
   }
-  return "N/A";
+  return "$0,00";
 };
 
 export default function IncidentList({ incidents, onEdit, onDelete }) {
@@ -122,7 +128,7 @@ export default function IncidentList({ incidents, onEdit, onDelete }) {
       </div>
       {incidentsToRender.length === 0 && (
         <div className="p-8 text-center text-gray-500">
-          No se encontraron incidentes.
+          No se encontraron incidentes registrados.
         </div>
       )}
     </div>

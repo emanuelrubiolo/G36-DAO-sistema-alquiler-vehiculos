@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
   Plus,
@@ -10,9 +10,13 @@ import {
   CheckCircle,
   Eye,
 } from "lucide-react";
-import mockReservations from "../mocks/reservations.json";
-import mockVehicles from "../mocks/vehicles.json";
-import mockInvoices from "../mocks/invoices.json";
+// AGREGADO: clientService
+import {
+  leaseService,
+  vehicleService,
+  invoiceService,
+  clientService,
+} from "../services";
 
 import ReservationFormModal from "../components/reservation/ReservationFormModal";
 import FinishRentalModal from "../components/rental/FinishRentalModal";
@@ -46,9 +50,14 @@ const StatusBadge = ({ status }) => {
 
 export default function Reservations() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [reservations, setReservations] = useState(mockReservations);
-  const [vehicles, setVehicles] = useState(mockVehicles);
-  const [invoices, setInvoices] = useState(mockInvoices);
+  const [reservations, setReservations] = useState([]);
+
+  // Datos necesarios para el formulario
+  const [vehicles, setVehicles] = useState([]);
+  const [clients, setClients] = useState([]); // AGREGADO: Estado para clientes
+
+  const [invoices, setInvoices] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [view] = useState("table");
   const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false);
 
@@ -57,15 +66,42 @@ export default function Reservations() {
   const [isFinishModalOpen, setIsFinishModalOpen] = useState(false);
   const [rentalToFinish, setRentalToFinish] = useState(null);
 
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      // AGREGADO: Carga de clientes
+      const [reservationsData, vehiclesData, invoicesData, clientsData] =
+        await Promise.all([
+          leaseService.getAll(),
+          vehicleService.getAll(),
+          invoiceService.getAll(),
+          clientService.getAll(), // Llamada al servicio
+        ]);
+      setReservations(reservationsData);
+      setVehicles(vehiclesData);
+      setInvoices(invoicesData);
+      setClients(clientsData); // Seteo del estado
+    } catch (error) {
+      console.error("Error loading data:", error);
+      alert("Error al cargar datos");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredReservations = reservations.filter((res) => {
     const term = searchTerm.toLowerCase();
     const vehiclePatente =
-      mockVehicles.find((v) => v.id === res.vehicleId)?.patente || "";
+      vehicles.find((v) => v.id === res.vehicleId)?.patente || "";
 
     return (
-      res.clientName.toLowerCase().includes(term) ||
-      res.vehicleName.toLowerCase().includes(term) ||
-      res.id.toLowerCase().includes(term) ||
+      res.clientName?.toLowerCase().includes(term) ||
+      res.vehicleName?.toLowerCase().includes(term) ||
+      res.id?.toLowerCase().includes(term) ||
       vehiclePatente.toLowerCase().includes(term)
     );
   });
@@ -86,23 +122,26 @@ export default function Reservations() {
     setIsEditModalOpen(false);
     setReservationToEdit(null);
   };
-  const handleEditSubmit = (formData) => {
-    if (reservationToEdit) {
-      setReservations((prev) =>
-        prev.map((r) =>
-          r.id === reservationToEdit.id
-            ? { ...reservationToEdit, ...formData }
-            : r
-        )
-      );
-    } else {
-      const newReservation = { id: `r${new Date().getTime()}`, ...formData };
-      setReservations((prev) => [newReservation, ...prev]);
+  const handleEditSubmit = async (formData) => {
+    try {
+      if (reservationToEdit) {
+        await leaseService.update(reservationToEdit.id, formData);
+        alert("Reserva actualizada exitosamente");
+      } else {
+        await leaseService.create(formData);
+        alert("Reserva creada exitosamente");
+      }
+      await loadData();
+      handleCloseEditModal();
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      const errorMsg =
+        error.response?.data?.detail || "Error al guardar la reserva";
+      alert(errorMsg);
     }
-    handleCloseEditModal();
   };
 
-  const handleStartRental = (reservation) => {
+  const handleStartRental = async (reservation) => {
     if (
       !window.confirm(
         `¿Iniciar el alquiler para ${reservation.clientName} con el ${reservation.vehicleName}?`
@@ -110,22 +149,17 @@ export default function Reservations() {
     ) {
       return;
     }
-    setReservations((prev) =>
-      prev.map((r) =>
-        r.id === reservation.id
-          ? {
-              ...r,
-              status: "INICIADO",
-              fecha_confirmacion: new Date().toISOString(),
-            }
-          : r
-      )
-    );
-    setVehicles((prev) =>
-      prev.map((v) =>
-        v.id === reservation.vehicleId ? { ...v, estado: "NO_DISPONIBLE" } : v
-      )
-    );
+
+    try {
+      await leaseService.start(reservation.id, {
+        fecha_confirmacion: new Date().toISOString(),
+      });
+      alert("Alquiler iniciado exitosamente");
+      await loadData();
+    } catch (error) {
+      console.error("Error starting rental:", error);
+      alert(error.response?.data?.detail || "Error al iniciar el alquiler");
+    }
   };
 
   const handleOpenFinishModal = (rental) => {
@@ -133,63 +167,49 @@ export default function Reservations() {
     setIsFinishModalOpen(true);
   };
 
-  const handleFinishSubmit = (data) => {
-    const rental = rentalToFinish;
-    setReservations((prevRentals) =>
-      prevRentals.map((r) =>
-        r.id === data.rentalId
-          ? {
-              ...r,
-              status: "FINALIZADO",
-              kilometraje_fin: data.kilometraje_fin,
-            }
-          : r
-      )
-    );
-    setVehicles((prevVehicles) =>
-      prevVehicles.map((v) =>
-        v.id === rentalToFinish.vehicleId
-          ? {
-              ...v,
-              estado: "DISPONIBLE",
-              kilometraje_actual: data.kilometraje_fin,
-            }
-          : v
-      )
-    );
-    const newInvoice = {
-      id: `f${new Date().getTime()}`,
-      rentalId: rental.id,
-      clientName: rental.clientName,
-      issueDate: new Date().toISOString(),
-      total: rental.total,
-      paymentMethod: data.metodo_pago,
-      status: "NO COBRADA",
-    };
-    setInvoices((prevInvoices) => [newInvoice, ...prevInvoices]);
-    setIsFinishModalOpen(false);
-    setRentalToFinish(null);
-  };
-
-  const handleDelete = (reservation) => {
-    if (
-      window.confirm(
-        `¿Estás seguro de que quieres CANCELAR la reserva ID ${reservation.id}?`
-      )
-    ) {
-      setReservations((prev) =>
-        prev.map((r) =>
-          r.id === reservation.id
-            ? {
-                ...r,
-                status: "CANCELADO",
-                fecha_cancelacion: new Date().toISOString(),
-              }
-            : r
-        )
-      );
+  const handleFinishSubmit = async (data) => {
+    try {
+      await leaseService.finish(data.rentalId, {
+        kilometraje_fin: data.kilometraje_fin,
+        metodo_pago: data.metodo_pago,
+      });
+      alert("Alquiler finalizado exitosamente");
+      await loadData();
+      setIsFinishModalOpen(false);
+      setRentalToFinish(null);
+    } catch (error) {
+      console.error("Error finishing rental:", error);
+      alert(error.response?.data?.detail || "Error al finalizar el alquiler");
     }
   };
+
+  const handleDelete = async (reservationId) => {
+    if (
+      window.confirm(
+        `¿Estás seguro de que quieres CANCELAR la reserva ID ${reservationId}?`
+      )
+    ) {
+      try {
+        await leaseService.delete(reservationId);
+        alert("Reserva cancelada exitosamente");
+        await loadData();
+      } catch (error) {
+        console.error("Error canceling reservation:", error);
+        alert(error.response?.data?.detail || "Error al cancelar la reserva");
+      }
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Cargando reservas...</p>
+        </div>
+      </div>
+    );
+  }
 
   const columns = [
     { header: "# Reserva", field: "id" },
@@ -201,7 +221,6 @@ export default function Reservations() {
 
   return (
     <section className="space-y-6">
-      {}
       <header className="flex justify-between items-center pb-2">
         <h1 className="text-3xl font-bold text-gray-900">
           Gestión de Reservas
@@ -212,7 +231,6 @@ export default function Reservations() {
         </StyledPrimaryButton>
       </header>
 
-      {}
       <div className="flex gap-6">
         <SearchBoxWithButton
           searchTerm={searchTerm}
@@ -225,9 +243,7 @@ export default function Reservations() {
         />
       </div>
 
-      {}
       <div className="mt-6 flex gap-6">
-        {}
         {isAdvancedFilterOpen && (
           <div className="w-64 bg-white rounded-xl shadow-lg border border-gray-100 p-5 shrink-0 transition-all duration-300">
             <div className="flex justify-between items-center mb-4 pb-2 border-b">
@@ -254,7 +270,6 @@ export default function Reservations() {
           </div>
         )}
 
-        {}
         <div className="flex-grow">
           <GenericTable
             columns={columns}
@@ -298,7 +313,6 @@ export default function Reservations() {
                   <StatusBadge status={res.status} />
                 </td>
 
-                {}
                 <TableActionCell
                   data={res}
                   onAction={
@@ -325,7 +339,11 @@ export default function Reservations() {
                   onEdit={
                     res.status === "RESERVADO" ? handleOpenEditModal : null
                   }
-                  onDelete={res.status !== "FINALIZADO" ? handleDelete : null}
+                  onDelete={
+                    res.status !== "FINALIZADO"
+                      ? () => handleDelete(res.id)
+                      : null
+                  }
                 />
               </tr>
             )}
@@ -333,12 +351,14 @@ export default function Reservations() {
         </div>
       </div>
 
-      {}
       <ReservationFormModal
         isOpen={isEditModalOpen}
         onClose={handleCloseEditModal}
         onSubmit={handleEditSubmit}
         reservationToEdit={reservationToEdit}
+        // AGREGADO: Paso de datos al modal
+        clientsList={clients}
+        vehiclesList={vehicles}
       />
       <FinishRentalModal
         isOpen={isFinishModalOpen}

@@ -1,4 +1,4 @@
-import { X, Printer } from "lucide-react";
+import { X, Printer, Car, MapPin, Phone, Mail } from "lucide-react";
 
 const formatDate = (
   dateString,
@@ -28,102 +28,261 @@ export default function InvoiceDetailModal({
 }) {
   if (!isOpen || !invoice) return null;
 
-  const { id, issueDate, total, paymentMethod, status } = invoice;
-  const {
-    clientName,
-    vehicleName,
-    startDate,
-    endDate,
-    kilometraje_inicio,
-    kilometraje_fin,
-  } = rental || {};
+  // 1. Normalización de datos
+  const { id, total, paymentMethod, status } = invoice;
+  const issueDate = invoice.issuedDate || invoice.issueDate;
+
+  const clientName = invoice.clientName || rental?.clientName || "N/A";
+  const vehicleName = invoice.vehicleInfo || rental?.vehicleName || "N/A";
+
+  const start = rental?.startDate || rental?.date_time_start;
+  const end = rental?.endDate || rental?.date_time_end;
+  const period =
+    start && end
+      ? `${formatDate(start)} - ${formatDate(end)}`
+      : invoice.leaseDates || "N/A";
+
+  const kmStart = rental?.start_kilometers ?? rental?.kilometraje_inicio;
+  const kmEnd = rental?.end_kilometers ?? rental?.kilometraje_fin;
 
   return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center p-4"
-      onClick={onClose}
-    >
+    <>
+      {/* --- MODAL VISUAL (Se oculta al imprimir) --- */}
       <div
-        className="bg-white w-full max-w-2xl rounded-lg shadow-xl z-50 overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center p-4 print:hidden"
+        onClick={onClose}
       >
-        <header className="flex justify-between items-center p-5 border-b border-gray-200">
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">
-              Detalle de Factura
-            </h2>
-            <p className="text-sm text-gray-500">Factura ID: {id}</p>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </header>
+        <div
+          className="bg-white w-full max-w-2xl rounded-lg shadow-xl z-50 overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <header className="flex justify-between items-center p-5 border-b border-gray-200">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">
+                Detalle de Factura
+              </h2>
+              <p className="text-sm text-gray-500">Factura ID: {id}</p>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </header>
 
-        <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
-          <div className="space-y-2">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Datos de Facturación
-            </h3>
-            <DetailRow label="Estado" value={status} />
-            <DetailRow label="Fecha de Emisión" value={formatDate(issueDate)} />
-            <DetailRow label="Método de Pago" value={paymentMethod} />
-            <DetailRow
-              label="Monto Total"
-              value={`$${total.toLocaleString("es-AR")}`}
-            />
-          </div>
-
-          {rental ? (
+          <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
             <div className="space-y-2">
               <h3 className="text-lg font-semibold text-gray-800">
-                Detalles del Alquiler (ID: {rental.id})
+                Datos de Facturación
+              </h3>
+              <DetailRow label="Estado" value={status} />
+              <DetailRow
+                label="Fecha de Emisión"
+                value={formatDate(issueDate)}
+              />
+              <DetailRow label="Método de Pago" value={paymentMethod} />
+              <DetailRow
+                label="Monto Total"
+                value={`$${parseFloat(total).toLocaleString("es-AR")}`}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold text-gray-800">
+                {rental
+                  ? `Detalles del Alquiler (ID: ${rental.id})`
+                  : "Información del Alquiler"}
               </h3>
               <DetailRow label="Cliente" value={clientName} />
               <DetailRow label="Vehículo" value={vehicleName} />
-              <DetailRow
-                label="Período de Alquiler"
-                value={`${formatDate(startDate)} - ${formatDate(endDate)}`}
-              />
+              <DetailRow label="Período de Alquiler" value={period} />
               <DetailRow
                 label="Km Inicial"
-                value={`${kilometraje_inicio?.toLocaleString("es-AR")} km`}
+                value={
+                  kmStart !== undefined && kmStart !== null
+                    ? `${kmStart.toLocaleString("es-AR")} km`
+                    : "N/A"
+                }
               />
               <DetailRow
                 label="Km Final"
-                value={`${
-                  kilometraje_fin?.toLocaleString("es-AR") || "N/A"
-                } km`}
+                value={
+                  kmEnd !== undefined && kmEnd !== null
+                    ? `${kmEnd.toLocaleString("es-AR")} km`
+                    : "En curso / N/A"
+                }
               />
             </div>
-          ) : (
-            <p className="text-sm text-red-500">
-              Error: No se encontraron los detalles del alquiler asociado (ID:{" "}
-              {invoice.rentalId}).
-            </p>
-          )}
+
+            {!rental && (
+              <p className="text-xs text-gray-400 italic mt-2">
+                * Nota: No se pudo vincular la información completa del
+                alquiler.
+              </p>
+            )}
+          </div>
+
+          <footer className="flex justify-end gap-3 p-5 bg-gray-50 border-t border-gray-200">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50"
+            >
+              Cerrar
+            </button>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-sm hover:bg-blue-700"
+            >
+              <Printer className="w-5 h-5" />
+              Imprimir Factura
+            </button>
+          </footer>
+        </div>
+      </div>
+
+      {/* --- DISEÑO DE IMPRESIÓN (Solo visible al imprimir) --- */}
+      <div className="hidden print:block print:fixed print:inset-0 print:bg-white print:z-[9999] print:p-12 font-sans text-gray-800">
+        {/* Header Factura */}
+        <div className="flex justify-between items-start border-b-2 border-gray-800 pb-6 mb-8">
+          <div className="space-y-1">
+            <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight mb-2">
+              FACTURA
+            </h1>
+            <div className="flex items-center gap-2 text-gray-600">
+              <Car className="w-5 h-5" />
+              <span className="font-bold text-lg">RentApp S.A.</span>
+            </div>
+            <div className="text-sm text-gray-500 space-y-0.5 pl-7">
+              <p>Av. Siempre Viva 123</p>
+              <p>Córdoba, Argentina</p>
+              <p>CUIT: 30-12345678-9</p>
+              <p>IVA Responsable Inscripto</p>
+            </div>
+          </div>
+
+          <div className="text-right space-y-2">
+            <div>
+              <p className="text-sm text-gray-500 uppercase font-bold">
+                Factura N°
+              </p>
+              <p className="text-2xl font-mono text-gray-900">
+                {String(id).padStart(8, "0")}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 uppercase font-bold">Fecha</p>
+              <p className="text-gray-900">{formatDate(issueDate)}</p>
+            </div>
+          </div>
         </div>
 
-        <footer className="flex justify-end gap-3 p-5 bg-gray-50 border-t border-gray-200">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50"
-          >
-            Cerrar
-          </button>
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-sm hover:bg-blue-700"
-          >
-            <Printer className="w-5 h-5" />
-            Imprimir
-          </button>
-        </footer>
+        {/* Info Cliente */}
+        <div className="flex justify-between mb-10">
+          <div className="w-1/2">
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">
+              Facturar a
+            </h3>
+            <p className="text-xl font-bold text-gray-900">{clientName}</p>
+            <p className="text-gray-600 text-sm mt-1">
+              Condición de Pago: {paymentMethod}
+            </p>
+          </div>
+          <div className="w-1/2 text-right">
+            <div
+              className={`inline-block px-4 py-1 rounded border-2 ${
+                status === "COBRADA"
+                  ? "border-green-600 text-green-800 font-bold"
+                  : "border-gray-300 text-gray-500"
+              }`}
+            >
+              {status.toUpperCase()}
+            </div>
+          </div>
+        </div>
+
+        {/* Tabla de Items */}
+        <table className="w-full mb-8">
+          <thead>
+            <tr className="bg-gray-50 border-y border-gray-200">
+              <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                Concepto
+              </th>
+              <th className="text-right py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                Detalle
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            <tr>
+              <td className="py-4 px-4 text-gray-800 font-medium">
+                Alquiler de Vehículo
+                <p className="text-xs text-gray-500 font-normal mt-0.5">
+                  {vehicleName}
+                </p>
+              </td>
+              <td className="py-4 px-4 text-right text-gray-600">
+                Ref. Alquiler #{rental?.id || "N/A"}
+              </td>
+            </tr>
+            <tr>
+              <td className="py-4 px-4 text-gray-800">Período de Uso</td>
+              <td className="py-4 px-4 text-right text-gray-600">{period}</td>
+            </tr>
+            <tr>
+              <td className="py-4 px-4 text-gray-800">Kilometraje</td>
+              <td className="py-4 px-4 text-right text-gray-600">
+                Inicial: {kmStart?.toLocaleString() || "-"} | Final:{" "}
+                {kmEnd?.toLocaleString() || "-"}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* Totales */}
+        <div className="flex justify-end border-t-2 border-gray-800 pt-6">
+          <div className="w-1/2 max-w-xs space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Subtotal</span>
+              <span className="text-gray-900 font-medium">
+                $
+                {parseFloat(total).toLocaleString("es-AR", {
+                  minimumFractionDigits: 2,
+                })}
+              </span>
+            </div>
+            <div className="flex justify-between items-center text-2xl font-bold text-gray-900 pt-3 border-t border-gray-200">
+              <span>Total</span>
+              <span>
+                $
+                {parseFloat(total).toLocaleString("es-AR", {
+                  minimumFractionDigits: 2,
+                })}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer Factura */}
+        <div className="fixed bottom-12 left-12 right-12 text-center border-t border-gray-100 pt-8">
+          <p className="text-gray-500 text-sm mb-2">
+            ¡Gracias por elegir RentApp!
+          </p>
+          <div className="flex justify-center gap-6 text-xs text-gray-400">
+            <span className="flex items-center gap-1">
+              <Phone className="w-3 h-3" /> +54 351 123 4567
+            </span>
+            <span className="flex items-center gap-1">
+              <Mail className="w-3 h-3" /> facturacion@rentapp.com
+            </span>
+            <span className="flex items-center gap-1">
+              <MapPin className="w-3 h-3" /> Córdoba, ARG
+            </span>
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

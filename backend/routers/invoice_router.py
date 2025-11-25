@@ -8,6 +8,7 @@ from decimal import Decimal
 from backend.data.database import get_db
 from backend.models.invoice import Invoice
 from backend.models.lease import Lease
+from backend.models.incident import Incident
 from backend.schemas.invoice_schemas import (
     InvoiceCreate, InvoiceResponse, InvoiceUpdate,
     InvoicePay, InvoiceCancel
@@ -118,9 +119,9 @@ def create_invoice(invoice: InvoiceCreate, db: Session = Depends(get_db)):
 
     # TODO: Add incidents/charges calculation here
     # Example: Query incidents table and add extra charges
-    # incidents = db.query(Incident).filter(Incident.leaseId == lease.id).all()
-    # for incident in incidents:
-    #     total += incident.cost
+    incidents = db.query(Incident).filter(Incident.rentalId == lease.id).all()
+    for incident in incidents:
+        total += incident.cost
 
     # Create invoice
     db_invoice = Invoice(
@@ -274,7 +275,7 @@ def cancel_invoice(id_factura: int, db: Session = Depends(get_db)):
 #         if incident.cost:
 #             total += incident.cost
 #
-#     # Create invoice
+#      Create invoice
 #     db_invoice = Invoice(
 #         rentalId=invoice.rentalId,
 #         clientName=lease.client.name if lease.client else "Unknown",

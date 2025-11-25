@@ -11,7 +11,7 @@ export default function KpiCard({
 }) {
   const isPositive =
     title === "Facturación Total" || title === "Clientes Activos";
-  const delta = isPositive ? "+4.5%" : "-1.2%";
+  const delta = isPositive ? "" : "";
 
   const activeClass = isActive
     ? "ring-4 ring-offset-2 ring-blue-400/70 border-blue-600"

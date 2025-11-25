@@ -12,6 +12,7 @@ class LeaseCreate(BaseModel):
     date_time_start: datetime
     date_time_end: datetime
     start_kilometers: Optional[int] = None
+    
 
 
 class LeaseResponse(BaseModel):
@@ -22,7 +23,7 @@ class LeaseResponse(BaseModel):
     vehicleBrand: Optional[str] = None
     vehicleModel: Optional[str] = None
     vehiclePatente: Optional[str] = None
-    employeeId: int
+    employeeId: Optional[int] = None
     employeeName: Optional[str] = None
     date_time_start: datetime
     date_time_end: datetime

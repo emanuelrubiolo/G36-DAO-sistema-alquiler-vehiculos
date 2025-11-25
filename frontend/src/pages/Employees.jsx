@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
   Plus,
@@ -9,7 +9,7 @@ import {
   X,
   Sliders,
 } from "lucide-react";
-import mockEmployees from "../mocks/employees.json";
+import { employeeService } from "../services";
 
 import EmployeeFormModal from "../components/employee/EmployeeFormModal";
 import EmployeeCard from "../components/employee/EmployeeCard";
@@ -28,20 +28,38 @@ const getToggleClasses = (currentView, buttonView) => {
 };
 
 export default function Employees() {
-  const [employees, setEmployees] = useState(mockEmployees);
+  const [employees, setEmployees] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(true);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [employeeToEdit, setEmployeeToEdit] = useState(null);
   const [view, setView] = useState("grid");
   const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false);
 
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const data = await employeeService.getAll();
+      setEmployees(data);
+    } catch (error) {
+      console.error("Error loading employees:", error);
+      alert("Error al cargar empleados");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredEmployees = employees.filter(
     (employee) =>
-      employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.cargo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.dni.includes(searchTerm)
+      employee.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.cargo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.dni?.includes(searchTerm)
   );
 
   const handleSearchExecution = () => {
@@ -63,32 +81,53 @@ export default function Employees() {
     setEmployeeToEdit(null);
   };
 
-  const handleFormSubmit = (formData) => {
-    if (employeeToEdit) {
-      setEmployees((prev) =>
-        prev.map((e) =>
-          e.id === employeeToEdit.id ? { ...employeeToEdit, ...formData } : e
-        )
-      );
-    } else {
-      const newEmployee = {
-        id: `e${new Date().getTime()}`,
-        ...formData,
-      };
-      setEmployees((prev) => [newEmployee, ...prev]);
+  const handleFormSubmit = async (formData) => {
+    try {
+      if (employeeToEdit) {
+        await employeeService.update(employeeToEdit.id, formData);
+        alert("Empleado actualizado exitosamente");
+      } else {
+        await employeeService.create(formData);
+        alert("Empleado creado exitosamente");
+      }
+      await loadData();
+      handleCloseModal();
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      const errorMsg = error.response?.data?.detail || "Error al guardar el empleado";
+      alert(errorMsg);
     }
-    handleCloseModal();
   };
 
-  const handleDelete = (employee) => {
+  const handleDelete = async (employee) => {
+  
     if (
       window.confirm(
-        `¿Estás seguro de que quieres eliminar a ${employee.name}?`
+        `¿Estás seguro de que quieres eliminar a ${employee?.name || "este empleado"}?`
       )
     ) {
-      setEmployees((prev) => prev.filter((e) => e.id !== employee.id));
+      try {
+        await employeeService.delete(employee);
+        alert("Empleado eliminado exitosamente");
+        await loadData();
+      } catch (error) {
+        console.error("Error deleting employee:", error);
+        const errorMsg = error.response?.data?.detail || "Error al eliminar el empleado";
+        alert(errorMsg);
+      }
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Cargando empleados...</p>
+        </div>
+      </div>
+    );
+  }
 
   const columns = [
     { header: "Nombre", field: "name" },
@@ -179,9 +218,7 @@ export default function Employees() {
         />
       </div>
 
-      {}
       <div className="mt-6 flex gap-6">
-        {}
         {isAdvancedFilterOpen && (
           <div className="w-64 bg-white rounded-xl shadow-lg border border-gray-100 p-5 shrink-0 transition-all duration-300">
             <div className="flex justify-between items-center mb-4 pb-2 border-b">
@@ -205,7 +242,6 @@ export default function Employees() {
           </div>
         )}
 
-        {}
         <div className="flex-grow">
           <div className="bg-white rounded-xl border border-gray-100 shadow-xl overflow-hidden">
             {view === "table" && <TableView />}

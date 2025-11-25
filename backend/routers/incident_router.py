@@ -31,7 +31,7 @@ def read_incidents(
 ):
     """Lista con filtros por: alquiler, empleado, tipo, fecha."""
     query = db.query(Incident)
-
+    
     # Apply filters
     if rentalId:
         query = query.filter(Incident.rentalId == rentalId)
@@ -41,23 +41,24 @@ def read_incidents(
         query = query.filter(Incident.type.ilike(f"%{type}%"))
     if date:
         query = query.filter(Incident.date == date)
-
+    
     incidents = query.offset(skip).limit(limit).all()
-
+    
+    # Convert to response models
     return [
-        {
-            "id": incident.id,
-            "rentalId": incident.rentalId,
-            "employeeId": incident.employeeId,
-            "clientName": incident.clientName,
-            "vehicleName": incident.vehicleName,
-            "type": incident.type,
-            "description": incident.description,
-            "cost": incident.cost,
-            "date": incident.date,
-            "employeeName": incident.employee.name if incident.employee else None,
-            "leaseState": incident.lease.state if incident.lease else None
-        }
+        IncidentResponse(
+            id=incident.id,
+            rentalId=incident.rentalId,
+            employeeId=incident.employeeId,
+            clientName=incident.clientName,
+            vehicleName=incident.vehicleName,
+            type=incident.type,
+            description=incident.description,
+            cost=incident.cost,
+            date=incident.date,
+            employeeName=incident.employee.name if incident.employee else None,
+            leaseState=incident.lease.state if incident.lease else None
+        )
         for incident in incidents
     ]
 
@@ -94,9 +95,9 @@ def create_incident(incident: IncidentCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Lease not found")
 
     # Validate employee exists
-    employee = db.query(Employee).filter(Employee.id == incident.employeeId).first()
-    if not employee:
-        raise HTTPException(status_code=404, detail="Employee not found")
+    #employee = db.query(Employee).filter(Employee.id == lease.employeeId).first()
+    #if not employee:
+    #    raise HTTPException(status_code=404, detail="Employee not found")
 
     # Get client and vehicle names from lease
     client_name = lease.client.name if lease.client else "Unknown"
@@ -108,7 +109,7 @@ def create_incident(incident: IncidentCreate, db: Session = Depends(get_db)):
     # Create incident
     db_incident = Incident(
         rentalId=incident.rentalId,
-        employeeId=incident.employeeId,
+    #   employeeId=employee.id,
         clientName=client_name,
         vehicleName=vehicle_name,
         type=incident.type,
@@ -173,3 +174,23 @@ def update_incident(id_incidente: int, incident: IncidentUpdate, db: Session = D
         "employeeName": db_incident.employee.name if db_incident.employee else None,
         "leaseState": db_incident.lease.state if db_incident.lease else None
     }
+
+@router.delete("/{id_incidente}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_incident(id_incidente: int, db: Session = Depends(get_db)):
+    """Eliminar incidente."""
+    db_incident = db.query(Incident).filter(Incident.id == id_incidente).first()
+    if not db_incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+
+    # Check if the related lease is finalized (can't delete incidents after finalization)
+    if db_incident.lease and db_incident.lease.state == "finalizado":
+        # Check if invoice exists
+        if db_incident.lease.invoice:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot delete incident for a lease with an existing invoice"
+            )
+
+    db.delete(db_incident)
+    db.commit()
+    return

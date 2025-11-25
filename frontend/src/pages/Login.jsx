@@ -4,8 +4,8 @@ import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 export default function Login() {
-  const [username, setUsername] = useState("mherrera");
-  const [password, setPassword] = useState("1234");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   const { login, currentUser } = useAuth();

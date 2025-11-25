@@ -2,7 +2,7 @@ import { Mail, Phone, Hash, Edit, Trash2 } from "lucide-react";
 import StyledActionButton from "../ui/StyledActionButton";
 
 const StatusBadge = ({ status }) => {
-  const isActive = status === "Activo";
+  const isActive = status === "activo";
   return (
     <span
       className={`px-2.5 py-0.5 text-xs font-semibold rounded-full ${

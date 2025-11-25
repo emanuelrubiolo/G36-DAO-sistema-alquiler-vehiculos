@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
-import { Search, LayoutGrid, List, Sliders, X, Plus } from "lucide-react"; // Agregado Plus
+import { Search, LayoutGrid, List, Sliders, X, Plus } from "lucide-react";
 import { vehicleService } from "../services";
 import VehicleList from "../components/vehicle/VehicleList";
-import VehicleFormModal from "../components/vehicle/VehicleFormModal"; // Importar el Modal
+import VehicleFormModal from "../components/vehicle/VehicleFormModal";
 import SearchBoxWithButton from "../components/ui/SearchBoxWithButton";
-import StyledPrimaryButton from "../components/ui/StyledPrimaryButton"; // Importar botón primario
+import StyledPrimaryButton from "../components/ui/StyledPrimaryButton";
 
 const getToggleClasses = (currentView, buttonView) => {
   return `p-2 rounded-lg transition-all duration-200 ${
@@ -16,7 +16,11 @@ const getToggleClasses = (currentView, buttonView) => {
 
 export default function Vehicles() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [filters, setFilters] = useState({});
+
+  // Estados para filtros avanzados
+  const [priceRange, setPriceRange] = useState({ min: "", max: "" });
+  const [selectedFuel, setSelectedFuel] = useState("");
+
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState("grid");
@@ -52,15 +56,35 @@ export default function Vehicles() {
 
   const filteredVehicles = vehicles.filter((v) => {
     const term = searchTerm.toLowerCase();
-    return (
+
+    // 1. Filtro de Texto (Marca, Modelo, Patente)
+    const matchesSearch =
       v.brand?.toLowerCase().includes(term) ||
       v.model?.toLowerCase().includes(term) ||
-      v.patente?.toLowerCase().includes(term)
-    );
+      v.patente?.toLowerCase().includes(term);
+
+    // 2. Filtro de Precio
+    const price = parseFloat(v.pricePerDay);
+    const matchesMinPrice = priceRange.min
+      ? price >= parseFloat(priceRange.min)
+      : true;
+    const matchesMaxPrice = priceRange.max
+      ? price <= parseFloat(priceRange.max)
+      : true;
+
+    // 3. Filtro de Combustible
+    const matchesFuel = selectedFuel ? v.fuel === selectedFuel : true;
+
+    return matchesSearch && matchesMinPrice && matchesMaxPrice && matchesFuel;
   });
 
   const handleSearchExecution = () => {
     console.log("Ejecutando búsqueda profunda con:", searchTerm);
+  };
+
+  const clearAdvancedFilters = () => {
+    setPriceRange({ min: "", max: "" });
+    setSelectedFuel("");
   };
 
   // Manejadores del Modal
@@ -69,7 +93,6 @@ export default function Vehicles() {
     setIsFormModalOpen(true);
   };
 
-  // Nuevo: Manejador para abrir modal en modo edición
   const handleOpenEditModal = (vehicle) => {
     setVehicleToEdit(vehicle);
     setIsFormModalOpen(true);
@@ -83,11 +106,9 @@ export default function Vehicles() {
   const handleFormSubmit = async (formData) => {
     try {
       if (vehicleToEdit) {
-        // Lógica de edición
         await vehicleService.update(vehicleToEdit.id, formData);
         alert("Vehículo actualizado exitosamente");
       } else {
-        // Lógica de creación
         await vehicleService.create(formData);
         alert("Vehículo creado exitosamente");
       }
@@ -101,7 +122,6 @@ export default function Vehicles() {
     }
   };
 
-  // Nuevo: Manejador para eliminar vehículo
   const handleDeleteVehicle = async (vehicleId) => {
     if (
       window.confirm("¿Estás seguro de que quieres dar de baja este vehículo?")
@@ -136,7 +156,6 @@ export default function Vehicles() {
         <h1 className="text-3xl font-bold text-gray-900">
           Gestión de Vehículos
         </h1>
-        {/* Botón Agregar Vehículo */}
         <StyledPrimaryButton onClick={handleOpenCreateModal}>
           <Plus className="w-5 h-5" />
           <span>Nuevo Vehículo</span>
@@ -173,17 +192,61 @@ export default function Vehicles() {
             </div>
 
             <div className="space-y-4">
-              <div className="font-semibold text-gray-700">
-                Rango de Precios:
+              {/* Filtro de Precio */}
+              <div>
+                <div className="font-semibold text-gray-700 mb-2">
+                  Rango de Precios ($ / día):
+                </div>
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="number"
+                    placeholder="Min"
+                    value={priceRange.min}
+                    onChange={(e) =>
+                      setPriceRange({ ...priceRange, min: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                  <span className="text-gray-400">-</span>
+                  <input
+                    type="number"
+                    placeholder="Max"
+                    value={priceRange.max}
+                    onChange={(e) =>
+                      setPriceRange({ ...priceRange, max: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                </div>
               </div>
-              <div className="h-16 bg-gray-100 rounded flex items-center justify-center text-sm text-gray-500">
-                (Slider Mock aquí)
+
+              {/* Filtro de Combustible */}
+              <div>
+                <div className="font-semibold text-gray-700 mb-2">
+                  Tipo de Combustible:
+                </div>
+                <select
+                  value={selectedFuel}
+                  onChange={(e) => setSelectedFuel(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                >
+                  <option value="">Todos</option>
+                  <option value="Nafta">Nafta</option>
+                  <option value="Diesel">Diesel</option>
+                  <option value="GNC">GNC</option>
+                  <option value="Hibrido">Híbrido</option>
+                  <option value="Electrico">Eléctrico</option>
+                </select>
               </div>
-              <div className="font-semibold text-gray-700">
-                Tipo de Combustible:
-              </div>
-              <div className="h-24 bg-gray-100 rounded flex items-center justify-center text-sm text-gray-500">
-                (Checkboxes Mock aquí)
+
+              {/* Botón Limpiar */}
+              <div className="pt-2 flex justify-end">
+                <button
+                  onClick={clearAdvancedFilters}
+                  className="text-sm text-red-600 hover:text-red-800 flex items-center gap-1 font-medium"
+                >
+                  <X className="w-3 h-3" /> Limpiar Filtros
+                </button>
               </div>
             </div>
           </div>
@@ -199,7 +262,6 @@ export default function Vehicles() {
         </div>
       </div>
 
-      {/* Modal de Formulario */}
       <VehicleFormModal
         isOpen={isFormModalOpen}
         onClose={handleCloseModal}

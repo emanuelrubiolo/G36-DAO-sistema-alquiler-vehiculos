@@ -46,6 +46,9 @@ const StatusBadge = ({ status }) => {
 
 export default function Clients() {
   const [searchTerm, setSearchTerm] = useState("");
+  // Estado para el filtro de activo/inactivo
+  const [statusFilter, setStatusFilter] = useState("");
+
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -72,12 +75,22 @@ export default function Clients() {
     }
   };
 
-  const filteredClients = clients.filter(
-    (client) =>
-      client.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.dni?.includes(searchTerm)
-  );
+  const filteredClients = clients.filter((client) => {
+    const term = searchTerm.toLowerCase();
+
+    // 1. Filtro por texto (Nombre, Email, DNI)
+    const matchesSearch =
+      client.name?.toLowerCase().includes(term) ||
+      client.email?.toLowerCase().includes(term) ||
+      client.dni?.includes(term);
+
+    // 2. Filtro por estado (Activo/Inactivo)
+    const matchesStatus = statusFilter
+      ? client.status?.toLowerCase() === statusFilter.toLowerCase()
+      : true;
+
+    return matchesSearch && matchesStatus;
+  });
 
   const handleSearchExecution = () => {
     console.log("Ejecutando búsqueda de clientes con:", searchTerm);
@@ -272,9 +285,16 @@ export default function Clients() {
               <div className="font-semibold text-gray-700">
                 Estado de Cuenta:
               </div>
-              <div className="h-16 bg-gray-100 rounded flex items-center justify-center text-sm text-gray-500">
-                (Dropdown de Estado Mock)
-              </div>
+              {/* Selector Funcional de Estado */}
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Todos</option>
+                <option value="activo">Activo</option>
+                <option value="inactivo">Inactivo</option>
+              </select>
             </div>
           </div>
         )}

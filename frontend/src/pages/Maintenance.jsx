@@ -108,10 +108,12 @@ export default function Maintenance() {
   const handleFormSubmit = async (formData) => {
     try {
       if (jobToEdit) {
-        await maintenanceService.update(jobToEdit.id, formData);
+        
+        await maintenanceService.finish(jobToEdit.id);
+        //await maintenanceService.update(jobToEdit.id, formData);
         alert("Mantenimiento actualizado exitosamente");
       } else {
-        await maintenanceService.create(formData);
+        await maintenanceService.create(formData);        
         alert("Mantenimiento registrado exitosamente");
       }
       await loadData();

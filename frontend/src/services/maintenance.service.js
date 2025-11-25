@@ -21,6 +21,11 @@ export const maintenanceService = {
     return await apiService.put(`/mantenimiento/${maintenanceId}`, maintenanceData);
   },
 
+  // Finish maintenance record
+  finish: async (maintenanceId) => {
+    return await apiService.patch(`/mantenimiento/${maintenanceId}/finalizar`);
+  },
+
   // Delete maintenance record
   delete: async (maintenanceId) => {
     return await apiService.delete(`/mantenimiento/${maintenanceId}`);

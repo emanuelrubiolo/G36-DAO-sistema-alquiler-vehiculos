@@ -51,9 +51,9 @@ def create_maintenance(maintenance: MaintenanceCreate, db: Session = Depends(get
         raise HTTPException(status_code=404, detail="Vehicle not found")
 
     # Verificar que el empleado existe
-    employee = db.query(Employee).filter(Employee.id == maintenance.employeeId).first()
-    if not employee:
-        raise HTTPException(status_code=404, detail="Employee not found")
+    #employee = db.query(Employee).filter(Employee.id == maintenance.employeeId).first()
+    #if not employee:
+    #    raise HTTPException(status_code=404, detail="Employee not found")
 
     # Verificar que el vehículo no esté alquilado
     if vehicle.estado == "alquilado":
@@ -62,7 +62,7 @@ def create_maintenance(maintenance: MaintenanceCreate, db: Session = Depends(get
     # Crear mantenimiento
     db_maintenance = Maintenance(
         vehicleId=maintenance.vehicleId,
-        employeeId=maintenance.employeeId,
+    #    employeeId=maintenance.employeeId,
         vehicleName=f"{vehicle.brand} {vehicle.model}",  # Auto-generar nombre
         startDate=datetime.now(),
         endDate=None,

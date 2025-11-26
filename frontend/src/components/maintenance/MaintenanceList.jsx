@@ -1,28 +1,27 @@
 import StyledActionButton from "../ui/StyledActionButton";
-import { Edit, Trash2, Eye } from "lucide-react";
+import { Edit, Trash2, Eye, CheckCircle } from "lucide-react";
 
-// Helper para formatear fechas
+// CORRECCIÓN: formatDate simplificado para aceptar fechas ISO del backend
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
   const date = new Date(dateString);
+
+  // Validar que la fecha sea válida
+  if (isNaN(date.getTime())) return "N/A";
+
   const options = { year: "numeric", month: "2-digit", day: "2-digit" };
   return date.toLocaleDateString("es-AR", options);
 };
 
 // Helper robusto para moneda
 const formatCurrency = (amount) => {
-  // Convertimos a float por si viene como string "123.00"
   const num = parseFloat(amount);
-
-  // Validamos si es un número real
   if (!isNaN(num)) {
     return `$${num.toLocaleString("es-AR", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`;
   }
-
-  // Valor por defecto si no hay costo válido
   return "$0,00";
 };
 
@@ -59,7 +58,14 @@ const MaintenanceStatusBadge = ({ status }) => {
   );
 };
 
-export default function MaintenanceList({ maintenanceJobs, onEdit, onDelete }) {
+export default function MaintenanceList({
+  maintenanceJobs,
+  onEdit,
+  onDelete,
+  onFinish,
+}) {
+  const jobs = Array.isArray(maintenanceJobs) ? maintenanceJobs : [];
+
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-xl overflow-hidden">
       <div className="overflow-x-auto">
@@ -102,8 +108,7 @@ export default function MaintenanceList({ maintenanceJobs, onEdit, onDelete }) {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {maintenanceJobs.map((job) => {
-              // Corrección: Usar .includes() para ser más flexible con el estado
+            {jobs.map((job) => {
               const statusLower = job.status ? job.status.toLowerCase() : "";
               const isFinalized = statusLower.includes("finalizado");
 
@@ -141,22 +146,25 @@ export default function MaintenanceList({ maintenanceJobs, onEdit, onDelete }) {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex justify-end items-center gap-1">
-                      <StyledActionButton
-                        onClick={() => onEdit(job)}
-                        title={
-                          isFinalized ? "Ver Detalle" : "Ver/Modificar Registro"
-                        }
-                        colorClass={
-                          isFinalized ? "text-gray-600" : "text-blue-600"
-                        }
-                        isIconOnly={true}
-                      >
-                        {isFinalized ? (
+                      {!isFinalized ? (
+                        <StyledActionButton
+                          onClick={() => onFinish(job)}
+                          title="Finalizar Mantenimiento"
+                          colorClass="text-green-600"
+                          isIconOnly={true}
+                        >
+                          <CheckCircle className="w-5 h-5" />
+                        </StyledActionButton>
+                      ) : (
+                        <StyledActionButton
+                          onClick={() => onEdit(job)}
+                          title="Ver Detalle"
+                          colorClass="text-gray-500"
+                          isIconOnly={true}
+                        >
                           <Eye className="w-5 h-5" />
-                        ) : (
-                          <Edit className="w-5 h-5" />
-                        )}
-                      </StyledActionButton>
+                        </StyledActionButton>
+                      )}
 
                       <StyledActionButton
                         onClick={() => onDelete(job.id)}
@@ -174,7 +182,7 @@ export default function MaintenanceList({ maintenanceJobs, onEdit, onDelete }) {
           </tbody>
         </table>
       </div>
-      {maintenanceJobs.length === 0 && (
+      {jobs.length === 0 && (
         <div className="p-8 text-center text-gray-500">
           No se encontraron registros de mantenimiento.
         </div>

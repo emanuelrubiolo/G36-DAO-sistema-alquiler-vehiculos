@@ -73,9 +73,8 @@ export default function Maintenance() {
 
   const jobsSource = dashboardFilterMessage ? maintenanceJobs : allJobs;
 
-  // Lógica de filtrado combinada
   const filteredJobs = jobsSource.filter((job) => {
-    // 1. Búsqueda por texto (Vehículo o Descripción)
+    // 1. Búsqueda por texto
     const matchesSearch =
       job.vehicleName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.description?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -85,14 +84,13 @@ export default function Maintenance() {
       ? job.status?.toLowerCase() === statusFilter.toLowerCase()
       : true;
 
-    // 3. Filtro por Fecha (Rango sobre startDate)
+    // 3. Filtro por Fecha
     let matchesDate = true;
     if (dateFrom || dateTo) {
-      const jobDate = new Date(job.startDate); // Asumimos formato ISO o válido
+      const jobDate = new Date(job.startDate);
       const startFilter = dateFrom ? new Date(dateFrom) : null;
       const endFilter = dateTo ? new Date(dateTo) : null;
 
-      // Ajuste para incluir el día final completo si se selecciona fecha
       if (endFilter) endFilter.setHours(23, 59, 59, 999);
 
       if (startFilter && jobDate < startFilter) matchesDate = false;
@@ -135,6 +133,26 @@ export default function Maintenance() {
       const errorMsg =
         error.response?.data?.detail || "Error al guardar el mantenimiento";
       alert(errorMsg);
+    }
+  };
+
+  // NUEVA FUNCIÓN: Finalizar mantenimiento
+  const handleFinish = async (job) => {
+    if (
+      window.confirm(
+        `¿Confirmar la finalización del mantenimiento para ${job.vehicleName}?`
+      )
+    ) {
+      try {
+        await maintenanceService.finish(job.id);
+        alert("Mantenimiento finalizado exitosamente");
+        await loadData();
+      } catch (error) {
+        console.error("Error finishing maintenance:", error);
+        const errorMsg =
+          error.response?.data?.detail || "Error al finalizar el mantenimiento";
+        alert(errorMsg);
+      }
     }
   };
 
@@ -217,9 +235,7 @@ export default function Maintenance() {
         />
       </div>
 
-      {/* Contenedor Principal: Filtros + Tabla */}
       <div className="flex flex-col gap-6">
-        {/* Panel de Filtros Avanzados */}
         {isAdvancedFilterOpen && (
           <div className="w-full bg-white rounded-xl shadow-lg border border-gray-100 p-5 transition-all duration-300">
             <div className="flex justify-between items-center mb-4 pb-2 border-b">
@@ -247,6 +263,7 @@ export default function Maintenance() {
                 >
                   <option value="">Todos</option>
                   <option value="iniciado">Iniciado</option>
+                  <option value="en proceso">En Proceso</option>
                   <option value="finalizado">Finalizado</option>
                 </select>
               </div>
@@ -287,12 +304,12 @@ export default function Maintenance() {
           </div>
         )}
 
-        {/* Lista de Mantenimientos */}
         <div className="flex-grow">
           <MaintenanceList
             maintenanceJobs={filteredJobs}
             onEdit={handleOpenEditModal}
             onDelete={handleDelete}
+            onFinish={handleFinish} // PASAMOS LA NUEVA FUNCIÓN
           />
         </div>
       </div>

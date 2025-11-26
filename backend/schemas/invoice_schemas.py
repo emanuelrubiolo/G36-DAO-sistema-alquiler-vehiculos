@@ -1,7 +1,17 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 from datetime import date
 from decimal import Decimal
+
+
+# Nuevo modelo para el detalle de incidentes dentro de la factura
+class IncidentDetail(BaseModel):
+    type: str
+    description: str
+    cost: Decimal
+
+    class Config:
+        from_attributes = True
 
 
 class InvoiceCreate(BaseModel):
@@ -18,9 +28,14 @@ class InvoiceResponse(BaseModel):
     paymentMethod: str
     status: str
 
-    # Additional info from lease
+    # Info adicional del alquiler
     vehicleInfo: Optional[str] = None  # e.g., "Toyota Corolla - ABC123"
     leaseDates: Optional[str] = None  # e.g., "2024-01-15 to 2024-01-20"
+
+    # --- CAMPOS AGREGADOS PARA DETALLE COMPLETO ---
+    leaseAmount: Optional[Decimal] = 0  # El costo base del alquiler sin incidentes
+    incidentsTotal: Optional[Decimal] = 0  # Suma total de incidentes
+    incidents: List[IncidentDetail] = []  # Lista detallada
 
     class Config:
         from_attributes = True

@@ -1,4 +1,3 @@
-# routers/invoices.py
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -19,6 +18,66 @@ router = APIRouter(
     tags=["facturas"],
 )
 
+# --- Helper Function ---
+def format_invoice_response(invoice: Invoice, db: Session) -> dict:
+    """
+    Construye la respuesta completa de la factura, incluyendo detalles
+    del alquiler y la lista de incidentes asociados.
+    """
+    # 1. Obtener el alquiler asociado (Lease)
+    lease = invoice.lease
+    
+    # 2. Obtener incidentes asociados a este alquiler
+    # Se asume que Incident tiene un campo rentalId o relationship con Lease
+    incidents = db.query(Incident).filter(Incident.rentalId == invoice.rentalId).all()
+    
+    # 3. Calcular totales y formatear lista de incidentes
+    incidents_total = sum((i.cost for i in incidents if i.cost), Decimal(0))
+    
+    incidents_list = [
+        {
+            "type": i.type,
+            "description": i.description,
+            "cost": i.cost if i.cost else Decimal(0)
+        } for i in incidents
+    ]
+
+    # 4. Obtener info del vehículo y fechas de forma segura
+    vehicle_info = None
+    lease_dates = None
+    lease_amount = Decimal(0)
+
+    if lease:
+        # El monto base del alquiler
+        lease_amount = lease.amount if lease.amount else Decimal(0)
+        
+        if lease.vehicle:
+            vehicle_info = f"{lease.vehicle.brand} {lease.vehicle.model} - {lease.vehicle.patente}"
+        
+        if lease.date_time_start and lease.date_time_end:
+            # Formato simple YYYY-MM-DD
+            s_date = lease.date_time_start.strftime('%Y-%m-%d')
+            e_date = lease.date_time_end.strftime('%Y-%m-%d')
+            lease_dates = f"{s_date} to {e_date}"
+
+    return {
+        "id": invoice.id,
+        "rentalId": invoice.rentalId,
+        "clientName": invoice.clientName,
+        "issuedDate": invoice.issuedDate,
+        "total": invoice.total,
+        "paymentMethod": invoice.paymentMethod,
+        "status": invoice.status,
+        "vehicleInfo": vehicle_info,
+        "leaseDates": lease_dates,
+        # Nuevos campos calculados
+        "leaseAmount": lease_amount,
+        "incidentsTotal": incidents_total,
+        "incidents": incidents_list
+    }
+
+
+# --- Endpoints ---
 
 @router.get("/", response_model=list[InvoiceResponse])
 def read_invoices(
@@ -42,52 +101,18 @@ def read_invoices(
 
     invoices = query.offset(skip).limit(limit).all()
 
-    return [
-        {
-            "id": invoice.id,
-            "rentalId": invoice.rentalId,
-            "clientName": invoice.clientName,
-            "issuedDate": invoice.issuedDate,
-            "total": invoice.total,
-            "paymentMethod": invoice.paymentMethod,
-            "status": invoice.status,
-            "vehicleInfo": (
-                f"{invoice.lease.vehicle.brand} {invoice.lease.vehicle.model} - {invoice.lease.vehicle.patente}"
-                if invoice.lease and invoice.lease.vehicle else None
-            ),
-            "leaseDates": (
-                f"{invoice.lease.date_time_start.strftime('%Y-%m-%d')} to {invoice.lease.date_time_end.strftime('%Y-%m-%d')}"
-                if invoice.lease else None
-            )
-        }
-        for invoice in invoices
-    ]
+    # Usamos el helper para formatear cada factura
+    return [format_invoice_response(inv, db) for inv in invoices]
 
 
 @router.get("/{id_factura}", response_model=InvoiceResponse)
 def read_invoice(id_factura: int, db: Session = Depends(get_db)):
-    """Detalle de la factura."""
+    """Detalle de la factura incluyendo incidentes y desglose."""
     invoice = db.query(Invoice).filter(Invoice.id == id_factura).first()
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
 
-    return {
-        "id": invoice.id,
-        "rentalId": invoice.rentalId,
-        "clientName": invoice.clientName,
-        "issuedDate": invoice.issuedDate,
-        "total": invoice.total,
-        "paymentMethod": invoice.paymentMethod,
-        "status": invoice.status,
-        "vehicleInfo": (
-            f"{invoice.lease.vehicle.brand} {invoice.lease.vehicle.model} - {invoice.lease.vehicle.patente}"
-            if invoice.lease and invoice.lease.vehicle else None
-        ),
-        "leaseDates": (
-            f"{invoice.lease.date_time_start.strftime('%Y-%m-%d')} to {invoice.lease.date_time_end.strftime('%Y-%m-%d')}"
-            if invoice.lease else None
-        )
-    }
+    return format_invoice_response(invoice, db)
 
 
 @router.post("/", response_model=InvoiceResponse, status_code=status.HTTP_201_CREATED)
@@ -108,27 +133,33 @@ def create_invoice(invoice: InvoiceCreate, db: Session = Depends(get_db)):
         )
 
     # Validate lease is finalized
-    if lease.state != "finalizado":
+    # Se usa lower() para evitar problemas de mayúsculas/minúsculas
+    if not lease.state or lease.state.lower() != "finalizado":
         raise HTTPException(
             status_code=400,
             detail=f"Cannot create invoice for lease in state '{lease.state}'. Lease must be 'finalizado'."
         )
 
-    # Calculate total: lease amount + incidents
-    total = lease.amount if lease.amount else Decimal(0)
+    # --- CÁLCULO DEL TOTAL ---
+    # 1. Monto base del alquiler
+    lease_amount = lease.amount if lease.amount else Decimal(0)
 
-    # TODO: Add incidents/charges calculation here
-    # Example: Query incidents table and add extra charges
+    # 2. Sumar incidentes asociados al alquiler
+    incidents_total = Decimal(0)
     incidents = db.query(Incident).filter(Incident.rentalId == lease.id).all()
+    
     for incident in incidents:
-        total += incident.cost
+        if incident.cost:
+            incidents_total += incident.cost
+
+    total_final = lease_amount + incidents_total
 
     # Create invoice
     db_invoice = Invoice(
         rentalId=invoice.rentalId,
         clientName=lease.client.name if lease.client else "Unknown",
         issuedDate=date.today(),
-        total=total,
+        total=total_final,
         paymentMethod=invoice.paymentMethod,
         status="pendiente"
     )
@@ -137,23 +168,7 @@ def create_invoice(invoice: InvoiceCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_invoice)
 
-    return {
-        "id": db_invoice.id,
-        "rentalId": db_invoice.rentalId,
-        "clientName": db_invoice.clientName,
-        "issuedDate": db_invoice.issuedDate,
-        "total": db_invoice.total,
-        "paymentMethod": db_invoice.paymentMethod,
-        "status": db_invoice.status,
-        "vehicleInfo": (
-            f"{db_invoice.lease.vehicle.brand} {db_invoice.lease.vehicle.model} - {db_invoice.lease.vehicle.patente}"
-            if db_invoice.lease and db_invoice.lease.vehicle else None
-        ),
-        "leaseDates": (
-            f"{db_invoice.lease.date_time_start.strftime('%Y-%m-%d')} to {db_invoice.lease.date_time_end.strftime('%Y-%m-%d')}"
-            if db_invoice.lease else None
-        )
-    }
+    return format_invoice_response(db_invoice, db)
 
 
 @router.patch("/{id_factura}/pagar", response_model=InvoiceResponse)
@@ -179,23 +194,7 @@ def pay_invoice(id_factura: int, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_invoice)
 
-    return {
-        "id": db_invoice.id,
-        "rentalId": db_invoice.rentalId,
-        "clientName": db_invoice.clientName,
-        "issuedDate": db_invoice.issuedDate,
-        "total": db_invoice.total,
-        "paymentMethod": db_invoice.paymentMethod,
-        "status": db_invoice.status,
-        "vehicleInfo": (
-            f"{db_invoice.lease.vehicle.brand} {db_invoice.lease.vehicle.model} - {db_invoice.lease.vehicle.patente}"
-            if db_invoice.lease and db_invoice.lease.vehicle else None
-        ),
-        "leaseDates": (
-            f"{db_invoice.lease.date_time_start.strftime('%Y-%m-%d')} to {db_invoice.lease.date_time_end.strftime('%Y-%m-%d')}"
-            if db_invoice.lease else None
-        )
-    }
+    return format_invoice_response(db_invoice, db)
 
 
 @router.patch("/{id_factura}/anular", response_model=InvoiceResponse)
@@ -221,88 +220,4 @@ def cancel_invoice(id_factura: int, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_invoice)
 
-    return {
-        "id": db_invoice.id,
-        "rentalId": db_invoice.rentalId,
-        "clientName": db_invoice.clientName,
-        "issuedDate": db_invoice.issuedDate,
-        "total": db_invoice.total,
-        "paymentMethod": db_invoice.paymentMethod,
-        "status": db_invoice.status,
-        "vehicleInfo": (
-            f"{db_invoice.lease.vehicle.brand} {db_invoice.lease.vehicle.model} - {db_invoice.lease.vehicle.patente}"
-            if db_invoice.lease and db_invoice.lease.vehicle else None
-        ),
-        "leaseDates": (
-            f"{db_invoice.lease.date_time_start.strftime('%Y-%m-%d')} to {db_invoice.lease.date_time_end.strftime('%Y-%m-%d')}"
-            if db_invoice.lease else None
-        )
-    }
-
-#todo: integracion con incidente. Habria que reemplazar el metodo create_invoice por un metodo que reciba un incidente
-
-# @router.post("/", response_model=InvoiceResponse, status_code=status.HTTP_201_CREATED)
-# def create_invoice(invoice: InvoiceCreate, db: Session = Depends(get_db)):
-#     """Genera una factura para un alquiler (1:1). Calcula total = monto alquiler + incidentes."""
-#
-#     # Validate lease exists
-#     lease = db.query(Lease).filter(Lease.id == invoice.rentalId).first()
-#     if not lease:
-#         raise HTTPException(status_code=404, detail="Lease not found")
-#
-#     # Check if lease already has an invoice
-#     existing_invoice = db.query(Invoice).filter(Invoice.rentalId == invoice.rentalId).first()
-#     if existing_invoice:
-#         raise HTTPException(
-#             status_code=400,
-#             detail=f"Lease already has an invoice (Invoice ID: {existing_invoice.id})"
-#         )
-#
-#     # Validate lease is finalized
-#     if lease.state != "finalizado":
-#         raise HTTPException(
-#             status_code=400,
-#             detail=f"Cannot create invoice for lease in state '{lease.state}'. Lease must be 'finalizado'."
-#         )
-#
-#     # Calculate total: lease amount + incidents
-#     total = lease.amount if lease.amount else Decimal(0)
-#
-#     # Add all incident costs from this lease
-#     from backend.models.incident import Incident
-#     incidents = db.query(Incident).filter(Incident.rentalId == lease.id).all()
-#     for incident in incidents:
-#         if incident.cost:
-#             total += incident.cost
-#
-#      Create invoice
-#     db_invoice = Invoice(
-#         rentalId=invoice.rentalId,
-#         clientName=lease.client.name if lease.client else "Unknown",
-#         issuedDate=date.today(),
-#         total=total,
-#         paymentMethod=invoice.paymentMethod,
-#         status="pendiente"
-#     )
-#
-#     db.add(db_invoice)
-#     db.commit()
-#     db.refresh(db_invoice)
-#
-#     return {
-#         "id": db_invoice.id,
-#         "rentalId": db_invoice.rentalId,
-#         "clientName": db_invoice.clientName,
-#         "issuedDate": db_invoice.issuedDate,
-#         "total": db_invoice.total,
-#         "paymentMethod": db_invoice.paymentMethod,
-#         "status": db_invoice.status,
-#         "vehicleInfo": (
-#             f"{db_invoice.lease.vehicle.brand} {db_invoice.lease.vehicle.model} - {db_invoice.lease.vehicle.patente}"
-#             if db_invoice.lease and db_invoice.lease.vehicle else None
-#         ),
-#         "leaseDates": (
-#             f"{db_invoice.lease.date_time_start.strftime('%Y-%m-%d')} to {db_invoice.lease.date_time_end.strftime('%Y-%m-%d')}"
-#             if db_invoice.lease else None
-#         )
-#     }
+    return format_invoice_response(db_invoice, db)

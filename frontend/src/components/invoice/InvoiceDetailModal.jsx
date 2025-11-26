@@ -1,4 +1,12 @@
-import { X, Printer, Car, MapPin, Phone, Mail } from "lucide-react";
+import {
+  X,
+  Printer,
+  Car,
+  MapPin,
+  Phone,
+  Mail,
+  AlertTriangle,
+} from "lucide-react";
 
 const formatDate = (
   dateString,
@@ -11,8 +19,10 @@ const formatDate = (
   return new Date(dateString).toLocaleString("es-AR", fullOptions);
 };
 
-const DetailRow = ({ label, value }) => (
-  <div className="flex justify-between py-2 border-b border-gray-100">
+const DetailRow = ({ label, value, className = "" }) => (
+  <div
+    className={`flex justify-between py-2 border-b border-gray-100 ${className}`}
+  >
     <span className="text-sm font-medium text-gray-600">{label}</span>
     <span className="text-sm font-semibold text-gray-900 text-right">
       {value}
@@ -29,7 +39,17 @@ export default function InvoiceDetailModal({
   if (!isOpen || !invoice) return null;
 
   // 1. Normalización de datos
-  const { id, total, paymentMethod, status } = invoice;
+  const {
+    id,
+    total,
+    paymentMethod,
+    status,
+    // Nuevos campos del backend
+    incidents = [],
+    leaseAmount = 0,
+    incidentsTotal = 0,
+  } = invoice;
+
   const issueDate = invoice.issuedDate || invoice.issueDate;
 
   const clientName = invoice.clientName || rental?.clientName || "N/A";
@@ -44,6 +64,12 @@ export default function InvoiceDetailModal({
 
   const kmStart = rental?.start_kilometers ?? rental?.kilometraje_inicio;
   const kmEnd = rental?.end_kilometers ?? rental?.kilometraje_fin;
+
+  // Helper para formatear moneda
+  const formatMoney = (val) =>
+    `$${parseFloat(val || 0).toLocaleString("es-AR", {
+      minimumFractionDigits: 2,
+    })}`;
 
   return (
     <>
@@ -73,54 +99,67 @@ export default function InvoiceDetailModal({
 
           <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
             <div className="space-y-2">
-              <h3 className="text-lg font-semibold text-gray-800">
-                Datos de Facturación
-              </h3>
+              <h3 className="text-lg font-semibold text-gray-800">Resumen</h3>
               <DetailRow label="Estado" value={status} />
               <DetailRow
                 label="Fecha de Emisión"
                 value={formatDate(issueDate)}
               />
               <DetailRow label="Método de Pago" value={paymentMethod} />
-              <DetailRow
-                label="Monto Total"
-                value={`$${parseFloat(total).toLocaleString("es-AR")}`}
-              />
+            </div>
+
+            {/* Tabla de Desglose de Costos */}
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold text-gray-800">
+                Desglose de Conceptos
+              </h3>
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <DetailRow
+                  label="Costo Base Alquiler"
+                  value={formatMoney(
+                    leaseAmount > 0 ? leaseAmount : total - incidentsTotal
+                  )}
+                />
+
+                {incidents.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-gray-200">
+                    <p className="text-xs font-bold text-gray-500 uppercase mb-2">
+                      Incidentes / Adicionales
+                    </p>
+                    {incidents.map((inc, idx) => (
+                      <DetailRow
+                        key={idx}
+                        label={`${inc.type}: ${inc.description}`}
+                        value={formatMoney(inc.cost)}
+                        className="py-1 text-xs border-none"
+                      />
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center pt-3 mt-2 border-t-2 border-gray-300">
+                  <span className="text-base font-bold text-gray-800">
+                    Total a Pagar
+                  </span>
+                  <span className="text-xl font-extrabold text-blue-600">
+                    {formatMoney(total)}
+                  </span>
+                </div>
+              </div>
             </div>
 
             <div className="space-y-2">
               <h3 className="text-lg font-semibold text-gray-800">
-                {rental
-                  ? `Detalles del Alquiler (ID: ${rental.id})`
-                  : "Información del Alquiler"}
+                Información del Vehículo
               </h3>
               <DetailRow label="Cliente" value={clientName} />
               <DetailRow label="Vehículo" value={vehicleName} />
-              <DetailRow label="Período de Alquiler" value={period} />
+              <DetailRow label="Período" value={period} />
               <DetailRow
-                label="Km Inicial"
-                value={
-                  kmStart !== undefined && kmStart !== null
-                    ? `${kmStart.toLocaleString("es-AR")} km`
-                    : "N/A"
-                }
-              />
-              <DetailRow
-                label="Km Final"
-                value={
-                  kmEnd !== undefined && kmEnd !== null
-                    ? `${kmEnd.toLocaleString("es-AR")} km`
-                    : "En curso / N/A"
-                }
+                label="Kilometraje"
+                value={`${kmStart || "?"} km → ${kmEnd || "?"} km`}
               />
             </div>
-
-            {!rental && (
-              <p className="text-xs text-gray-400 italic mt-2">
-                * Nota: No se pudo vincular la información completa del
-                alquiler.
-              </p>
-            )}
           </div>
 
           <footer className="flex justify-end gap-3 p-5 bg-gray-50 border-t border-gray-200">
@@ -143,7 +182,7 @@ export default function InvoiceDetailModal({
         </div>
       </div>
 
-      {/* --- DISEÑO DE IMPRESIÓN (Solo visible al imprimir) --- */}
+      {/* --- DISEÑO DE IMPRESIÓN (FACTURA A4) --- */}
       <div className="hidden print:block print:fixed print:inset-0 print:bg-white print:z-[9999] print:p-12 font-sans text-gray-800">
         {/* Header Factura */}
         <div className="flex justify-between items-start border-b-2 border-gray-800 pb-6 mb-8">
@@ -159,7 +198,6 @@ export default function InvoiceDetailModal({
               <p>Av. Siempre Viva 123</p>
               <p>Córdoba, Argentina</p>
               <p>CUIT: 30-12345678-9</p>
-              <p>IVA Responsable Inscripto</p>
             </div>
           </div>
 
@@ -193,12 +231,12 @@ export default function InvoiceDetailModal({
           <div className="w-1/2 text-right">
             <div
               className={`inline-block px-4 py-1 rounded border-2 ${
-                status === "COBRADA"
+                status === "COBRADA" || status === "pagada"
                   ? "border-green-600 text-green-800 font-bold"
                   : "border-gray-300 text-gray-500"
               }`}
             >
-              {status.toUpperCase()}
+              {status ? status.toUpperCase() : "PENDIENTE"}
             </div>
           </div>
         </div>
@@ -211,56 +249,51 @@ export default function InvoiceDetailModal({
                 Concepto
               </th>
               <th className="text-right py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
-                Detalle
+                Importe
               </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
+            {/* Item Alquiler */}
             <tr>
-              <td className="py-4 px-4 text-gray-800 font-medium">
-                Alquiler de Vehículo
-                <p className="text-xs text-gray-500 font-normal mt-0.5">
-                  {vehicleName}
-                </p>
+              <td className="py-4 px-4 text-gray-800">
+                <span className="font-bold">Servicio de Alquiler</span>
+                <div className="text-xs text-gray-500 mt-1 space-y-0.5">
+                  <p>{vehicleName}</p>
+                  <p>Período: {period}</p>
+                  <p>Ref. Interna #{rental?.id || "N/A"}</p>
+                </div>
               </td>
-              <td className="py-4 px-4 text-right text-gray-600">
-                Ref. Alquiler #{rental?.id || "N/A"}
-              </td>
-            </tr>
-            <tr>
-              <td className="py-4 px-4 text-gray-800">Período de Uso</td>
-              <td className="py-4 px-4 text-right text-gray-600">{period}</td>
-            </tr>
-            <tr>
-              <td className="py-4 px-4 text-gray-800">Kilometraje</td>
-              <td className="py-4 px-4 text-right text-gray-600">
-                Inicial: {kmStart?.toLocaleString() || "-"} | Final:{" "}
-                {kmEnd?.toLocaleString() || "-"}
+              <td className="py-4 px-4 text-right text-gray-800 font-medium align-top">
+                {formatMoney(
+                  leaseAmount > 0 ? leaseAmount : total - incidentsTotal
+                )}
               </td>
             </tr>
+
+            {/* Items Incidentes */}
+            {incidents.map((inc, idx) => (
+              <tr key={idx}>
+                <td className="py-4 px-4 text-gray-800">
+                  <span className="font-bold text-orange-700">{inc.type}</span>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {inc.description}
+                  </p>
+                </td>
+                <td className="py-4 px-4 text-right text-gray-800 font-medium align-top">
+                  {formatMoney(inc.cost)}
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
 
         {/* Totales */}
         <div className="flex justify-end border-t-2 border-gray-800 pt-6">
           <div className="w-1/2 max-w-xs space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Subtotal</span>
-              <span className="text-gray-900 font-medium">
-                $
-                {parseFloat(total).toLocaleString("es-AR", {
-                  minimumFractionDigits: 2,
-                })}
-              </span>
-            </div>
-            <div className="flex justify-between items-center text-2xl font-bold text-gray-900 pt-3 border-t border-gray-200">
+            <div className="flex justify-between items-center text-2xl font-bold text-gray-900 pt-2">
               <span>Total</span>
-              <span>
-                $
-                {parseFloat(total).toLocaleString("es-AR", {
-                  minimumFractionDigits: 2,
-                })}
-              </span>
+              <span>{formatMoney(total)}</span>
             </div>
           </div>
         </div>

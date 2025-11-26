@@ -76,10 +76,11 @@ export default function MaintenanceFormModal({
 
   const getInitialState = () => {
     // Normalizar el estado para que coincida con los valores del <select> (Title Case)
-    // Esto asegura que si el backend devuelve "finalizado", el select muestre "Finalizado"
     let statusNormalized = jobToEdit?.status || "Iniciado";
     if (statusNormalized.toLowerCase() === "finalizado")
       statusNormalized = "Finalizado";
+    else if (statusNormalized.toLowerCase() === "en proceso")
+      statusNormalized = "En Proceso";
     else if (statusNormalized.toLowerCase() === "iniciado")
       statusNormalized = "Iniciado";
 
@@ -129,6 +130,18 @@ export default function MaintenanceFormModal({
       onClose();
       return;
     }
+
+    // --- VALIDACIÓN DE FECHAS CRÍTICA ---
+    const start = new Date(formData.startDate);
+    const end = formData.endDate ? new Date(formData.endDate) : null;
+
+    if (end && end < start) {
+      alert(
+        "Error: La Fecha de Fin no puede ser anterior a la Fecha de Inicio."
+      );
+      return;
+    }
+    // ------------------------------------
 
     const selectedVehicle = vehiclesList.find(
       (v) => v.id == formData.vehicleId
@@ -209,6 +222,7 @@ export default function MaintenanceFormModal({
               disabled={isFinished}
             >
               <option value="Iniciado">Iniciado</option>
+              <option value="En Proceso">En Proceso</option>
               <option value="Finalizado">Finalizado</option>
             </FormSelect>
 

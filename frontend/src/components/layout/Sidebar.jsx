@@ -105,9 +105,7 @@ export default function Sidebar() {
             <p className="text-sm font-semibold text-gray-900 truncate">
               {employeeName}
             </p>
-            <p className="text-xs text-gray-500 truncate">
-              Legajo: {employeeId}
-            </p>
+            <p className="text-xs text-gray-500 truncate">ID: {employeeId}</p>
           </div>
         </button>
 
